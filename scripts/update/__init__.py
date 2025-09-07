@@ -1,0 +1,1 @@
+"""HACS manifest update script."""
