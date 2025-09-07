@@ -8,5 +8,6 @@
   "loggers": ["caneth"],
   "codeowners": ["@kstaniek"],
   "requirements": ["aioampio==0.1.2"],
-  "issue_tracker": "https://github.com/kstaniek/hacs-ampio/issues"
+  "issue_tracker": "https://github.com/kstaniek/hacs-ampio/issues",
+  "documentation": "https://github.com/kstaniek/hacs-ampio"
 }

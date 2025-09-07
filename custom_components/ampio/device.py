@@ -35,7 +35,7 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
         params = {
             "identifiers": {(DOMAIN, ampio_resource.id)},
             "name": f"{ampio_resource.name}",
-            "manufacturer": "Ampio Systems",
+            "manufacturer": "Ampio",
             "model": ampio_resource.model.name,
             "model_id": ampio_resource.model.value,
             "sw_version": ampio_resource.sw_version,
