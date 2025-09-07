@@ -39,9 +39,6 @@ jobs:
         run: |
           python3 ${{ github.workspace }}/scripts/update/manifest.py --version ${{ steps.version.outputs.version }}
 
-      - name: ⏬ Download HACS frontend
-        run: ${{ github.workspace }}/scripts/install/frontend
-
       - name: 📤 Upload zip to action
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ github.event_name == 'push' }}
