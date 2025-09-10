@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Your Domain",
+        "description": "Enter host, port and a configuration URL (YAML).",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Config URL"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Ampio",
+        "description": "Update host, port or configuration URL."
+      }
+    },
+    "abort": {
+      "reconfigure_successful": "Configuration was updated.",
+      "missing_entry": "Cannot find the entry to reconfigure."
+    },
+    "error": {
+      "invalid_url": "URL must be http(s).",
+      "cannot_connect": "Cannot download the file (HTTP error).",
+      "timeout": "Timed out while downloading the file.",
+      "invalid_yaml": "File is not valid YAML."
+    }
+  }
+}

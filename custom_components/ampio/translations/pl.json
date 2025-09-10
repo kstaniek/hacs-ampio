@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Połącz z Ampio",
+        "description": "Podaj host, port oraz adres URL konfiguracji (YAML).",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Adres URL konfiguracji"
+        }
+      },
+      "reconfigure": {
+        "title": "Przekonfiguruj Ampio",
+        "description": "Zaktualizuj host, port lub adres URL konfiguracji."
+      }
+    },
+    "abort": {
+      "reconfigure_successful": "Konfiguracja została zaktualizowana.",
+      "missing_entry": "Nie znaleziono wpisu do przekonfigurowania."
+    },
+    "error": {
+      "invalid_url": "Adres URL musi używać protokołu http(s).",
+      "cannot_connect": "Nie można pobrać pliku (błąd HTTP).",
+      "timeout": "Przekroczono limit czasu podczas pobierania pliku.",
+      "invalid_yaml": "Plik nie jest prawidłowym YAML."
+    }
+  }
+}
