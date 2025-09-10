@@ -59,7 +59,7 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
                         errors[CONF_CONFIG_URL] = "cannot_connect"
                     else:
                         content_text = await resp.text()
-                        LOGGER.error("Configuration file downloaded from %s", url_str)
+                        LOGGER.info("Configuration file downloaded from %s", url_str)
             except TimeoutError:
                 errors[CONF_CONFIG_URL] = "timeout"
             except Exception:  # noqa: BLE001
