@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import pathlib
+from pathlib import Path
+from typing import Any
 
 from aioampio import AmpioBridge as AmpioCanBridge
 from homeassistant import core
@@ -13,6 +14,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import floor_registry as fr
 
+from .const import CONF_CONFIG
 from .device import async_setup_devices
 
 PLATFORMS = [
@@ -43,18 +45,29 @@ class AmpioBridge:
         self.config_entry = config_entry
         self.logger = logging.getLogger(__name__)
 
-        module_path = pathlib.Path(__file__).parent
-        config_path = module_path / "config.yaml"
-        self.logger.debug("Using config file: %s", config_path)
-        self.api = AmpioCanBridge(config_path, self.host, self.port)
+        config_path = Path(hass.config.config_dir) / "ampio.yaml"
+        if not config_path.exists():
+            self.logger.critical("Config file not found: %s", config_path)
+
+        self.api = AmpioCanBridge(self.ampio_config, self.host, self.port)
 
         self.reset_jobs: list[core.CALLBACK_TYPE] = []
         self.config_entry.runtime_data = self
 
     @property
+    def url(self) -> str:
+        """Return the config URL of the bridge."""
+        return self.config_entry.data["url"]
+
+    @property
     def host(self) -> str:
         """Return the host of the bridge."""
         return self.config_entry.data[CONF_HOST]
+
+    @property
+    def ampio_config(self) -> dict[str, Any]:
+        """Return the config of the bridge."""
+        return self.config_entry.data[CONF_CONFIG]
 
     @property
     def port(self) -> int:
@@ -75,7 +88,7 @@ class AmpioBridge:
             self.logger.exception("Unknown error connecting to Ampio CAN Bridge")
             return False
         finally:
-            if not setup_ok:
+            if not setup_ok and self.api is not None:
                 await self.api.stop()
 
         await async_setup_devices(self)
@@ -112,8 +125,7 @@ class AmpioBridge:
         if self.api is None:
             return True
 
-        await self.api.clear_callbacks()
-        await self.api.close()
+        await self.api.stop()
         return True
 
 
