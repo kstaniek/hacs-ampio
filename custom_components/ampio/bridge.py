@@ -45,10 +45,6 @@ class AmpioBridge:
         self.config_entry = config_entry
         self.logger = logging.getLogger(__name__)
 
-        config_path = Path(hass.config.config_dir) / "ampio.yaml"
-        if not config_path.exists():
-            self.logger.critical("Config file not found: %s", config_path)
-
         self.api = AmpioCanBridge(self.ampio_config, self.host, self.port)
 
         self.reset_jobs: list[core.CALLBACK_TYPE] = []
