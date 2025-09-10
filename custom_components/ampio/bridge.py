@@ -14,7 +14,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import floor_registry as fr
 
-from .const import CONF_CONFIG
+from .const import CONF_CONFIG, CONF_CONFIG_URL
 from .device import async_setup_devices
 
 PLATFORMS = [
@@ -53,7 +53,7 @@ class AmpioBridge:
     @property
     def url(self) -> str:
         """Return the config URL of the bridge."""
-        return self.config_entry.data["url"]
+        return self.config_entry.data[CONF_CONFIG_URL]
 
     @property
     def host(self) -> str:
