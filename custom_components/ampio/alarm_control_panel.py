@@ -93,7 +93,8 @@ class AmpioAlarm(AmpioBaseEntity, AlarmControlPanelEntity):
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command."""
         if code is None:
-            raise ValueError("Disarm code is required and cannot be None.")
+            msg = "Disarm code is required and cannot be None."
+            raise ValueError(msg)
         await self.controller.disarm(self.resource.id, code)
 
     async def async_alarm_arm_away(self, code: str | None = None) -> None:
