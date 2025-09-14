@@ -99,5 +99,5 @@ class AmpioValve(AmpioBaseEntity, ValveEntity):
         await self.controller.open_valve(self.resource.id)
 
     async def async_close_valve(self) -> None:
-        """Close valve."""
+        """Close the valve."""
         await self.controller.close_valve(self.resource.id)
