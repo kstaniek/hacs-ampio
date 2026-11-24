@@ -9,9 +9,9 @@ from aioampio.controllers.events import EventType
 from homeassistant.components.sensor import (
     SensorEntity,
     SensorEntityDescription,
-    StateType,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.typing import StateType
 
 from .entity import AmpioBaseEntity
 
