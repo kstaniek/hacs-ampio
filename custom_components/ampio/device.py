@@ -39,7 +39,7 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
             "model": ampio_resource.model.name,
             "model_id": ampio_resource.model.value,
             "sw_version": ampio_resource.sw_version,
-            "hw_version": ampio_resource.pcb,
+            "hw_version": str(ampio_resource.pcb),
             "serial_number": f"{ampio_resource.can_id:08X}",
         }
 
