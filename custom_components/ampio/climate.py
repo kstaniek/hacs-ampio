@@ -53,7 +53,7 @@ class AmpioClimate(AmpioBaseEntity, ClimateEntity):
         key="ampio_climate",
         has_entity_name=False,
     )
-    _attr_temperature_unit = "°C"
+    _attr_native_temperature_unit = "°C"
     _attr_hvac_modes = (HVACMode.OFF, HVACMode.AUTO, HVACMode.HEAT)
     _attr_hvac_mode = HVACMode.HEAT
 
@@ -79,11 +79,11 @@ class AmpioClimate(AmpioBaseEntity, ClimateEntity):
         return HVACMode.OFF
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self.resource.current_temperature
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self.resource.target_temperature
