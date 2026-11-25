@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from inspect import signature
 from typing import Any
 
 from aioampio import AmpioBridge as AmpioCanBridge
@@ -44,7 +45,11 @@ class AmpioBridge:
         self.config_entry = config_entry
         self.logger = logging.getLogger(__name__)
 
-        self.api = AmpioCanBridge(self.ampio_config, self.host, self.port)
+        api_kwargs: dict[str, Any] = {CONF_HOST: self.host, CONF_PORT: self.port}
+        # aioampio 0.2.3 predates the python-can interface/channel parameters.
+        if "interface" in signature(AmpioCanBridge).parameters:
+            api_kwargs.update(interface="waveshare", channel="can0")
+        self.api = AmpioCanBridge(self.ampio_config, **api_kwargs)
 
         self.reset_jobs: list[core.CALLBACK_TYPE] = []
         self.config_entry.runtime_data = self
@@ -86,10 +91,6 @@ class AmpioBridge:
             if not setup_ok and self.api is not None:
                 await self.api.stop()
 
-        await async_setup_devices(self)
-        await self.hass.config_entries.async_forward_entry_setups(
-            self.config_entry, PLATFORMS
-        )
         fr_reg = fr.async_get(self.hass)
         for floor in self.api.floors:
             f = fr_reg.async_get_floor_by_name(floor.name)
@@ -112,6 +113,10 @@ class AmpioBridge:
             else:
                 ar_reg.async_update(a.id, name=area.name, floor_id=fid, icon=area.icon)
 
+        await async_setup_devices(self)
+        await self.hass.config_entries.async_forward_entry_setups(
+            self.config_entry, PLATFORMS
+        )
         self.reset_jobs.append(self.config_entry.add_update_listener(_update_listener))
         return True
 
