@@ -8,22 +8,55 @@
           "host": "Host",
           "port": "Port",
           "config_url": "Adres URL konfiguracji"
+        },
+        "data_description": {
+          "host": "Adres IP lub nazwa hosta mostka Ampio CAN",
+          "port": "Numer portu (domyślnie: 20001)",
+          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)"
         }
       },
       "reconfigure": {
         "title": "Przekonfiguruj Ampio",
-        "description": "Zaktualizuj host, port lub adres URL konfiguracji."
+        "description": "Zaktualizuj host, port lub adres URL konfiguracji.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Adres URL konfiguracji"
+        },
+        "data_description": {
+          "host": "Adres IP lub nazwa hosta mostka Ampio CAN",
+          "port": "Numer portu (domyślnie: 20001)",
+          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)"
+        }
+      },
+      "discovery_confirm": {
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Adres URL konfiguracji"
+        },
+        "data_description": {
+          "host": "Adres IP lub nazwa hosta mostka Ampio CAN",
+          "port": "Numer portu (domyślnie: 20001)",
+          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)"
+        },
+        "title": "Wykryto mostek Ampio CAN",
+        "description": "Połącz z {name}. Potwierdź adres i port oraz podaj adres URL konfiguracji YAML."
       }
     },
     "abort": {
       "reconfigure_successful": "Konfiguracja została zaktualizowana.",
-      "missing_entry": "Nie znaleziono wpisu do przekonfigurowania."
+      "missing_entry": "Nie znaleziono wpisu do przekonfigurowania.",
+      "already_configured": "Ten punkt połączenia Ampio jest już skonfigurowany.",
+      "not_can_bridge": "Wykryta usługa nie jest mostkiem Ampio CAN.",
+      "invalid_discovery": "Wykryty mostek ma nieprawidłowy adres lub port."
     },
     "error": {
       "invalid_url": "Adres URL musi używać protokołu http(s).",
       "cannot_connect": "Nie można pobrać pliku (błąd HTTP).",
       "timeout": "Przekroczono limit czasu podczas pobierania pliku.",
-      "invalid_yaml": "Plik nie jest prawidłowym YAML."
-    }
+      "invalid_yaml": "Plik musi zawierać konfigurację YAML w postaci mapowania."
+    },
+    "flow_title": "{name}"
   }
 }

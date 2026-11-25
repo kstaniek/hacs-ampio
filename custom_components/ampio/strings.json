@@ -1,29 +1,62 @@
 {
   "config": {
+    "flow_title": "{name}",
     "step": {
       "user": {
-        "title": "Connect to Your Domain",
+        "title": "Connect to Ampio",
         "description": "Enter host, port and a configuration URL (YAML).",
         "data": {
           "host": "Host",
           "port": "Port",
           "config_url": "Config URL"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the Ampio CAN Bridge",
+          "port": "Port number (default: 20001)",
+          "config_url": "URL to YAML configuration file (http(s)://...)"
         }
       },
       "reconfigure": {
         "title": "Reconfigure Ampio",
-        "description": "Update host, port or configuration URL."
+        "description": "Update host, port or configuration URL.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Config URL"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the Ampio CAN Bridge",
+          "port": "Port number (default: 20001)",
+          "config_url": "URL to YAML configuration file (http(s)://...)"
+        }
+      },
+      "discovery_confirm": {
+        "description": "Connect to {name}. Confirm the endpoint and provide its YAML configuration URL.",
+        "title": "Discovered Ampio CAN Bridge",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Config URL"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the Ampio CAN Bridge",
+          "port": "Port number (default: 20001)",
+          "config_url": "URL to YAML configuration file (http(s)://...)"
+        }
       }
     },
     "abort": {
       "reconfigure_successful": "Configuration was updated.",
-      "missing_entry": "Cannot find the entry to reconfigure."
+      "missing_entry": "Cannot find the entry to reconfigure.",
+      "already_configured": "This Ampio endpoint is already configured.",
+      "not_can_bridge": "The discovered service is not an Ampio CAN bridge.",
+      "invalid_discovery": "The discovered bridge has an invalid address or port."
     },
     "error": {
       "invalid_url": "URL must be http(s).",
       "cannot_connect": "Cannot download the file (HTTP error).",
       "timeout": "Timed out while downloading the file.",
-      "invalid_yaml": "File is not valid YAML."
+      "invalid_yaml": "The file must contain a YAML configuration mapping."
     }
   }
 }
