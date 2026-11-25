@@ -100,18 +100,14 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
         url_str = user_input[CONF_CONFIG_URL].strip()
         unique_id = endpoint_id(host, port)
         entry = self._get_reconfigure_entry() if step_id == "reconfigure" else None
-        for existing in self._async_current_entries():
-            if existing is entry:
-                continue
-            if (
-                existing.unique_id == unique_id
-                or endpoint_id(existing.data[CONF_HOST], int(existing.data[CONF_PORT]))
-                == unique_id
-            ):
-                return self.async_abort(reason="already_configured")
+        entry_id = entry.entry_id if entry is not None else None
+        if self._endpoint_configured(unique_id, entry_id):
+            return self.async_abort(reason="already_configured")
 
         config, errors = await self.download_and_update_config(url_str)
         if not errors:
+            if self._endpoint_configured(unique_id, entry_id):
+                return self.async_abort(reason="already_configured")
             data = {
                 CONF_HOST: host,
                 CONF_PORT: port,
@@ -148,6 +144,18 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
             return self.async_create_entry(title=f"{host}:{port}", data=data)
         return self._show_form(step_id, user_input, errors)
+
+    def _endpoint_configured(self, unique_id: str, entry_id: str | None = None) -> bool:
+        """Match both current and legacy endpoint identities."""
+        return any(
+            existing.entry_id != entry_id
+            and (
+                existing.unique_id == unique_id
+                or endpoint_id(existing.data[CONF_HOST], int(existing.data[CONF_PORT]))
+                == unique_id
+            )
+            for existing in self._async_current_entries()
+        )
 
     def _show_form(
         self,
@@ -199,12 +207,8 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
         unique_id = endpoint_id(host, port)
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()
-        for entry in self._async_current_entries():
-            if (
-                endpoint_id(entry.data[CONF_HOST], int(entry.data[CONF_PORT]))
-                == unique_id
-            ):
-                return self.async_abort(reason="already_configured")
+        if self._endpoint_configured(unique_id):
+            return self.async_abort(reason="already_configured")
         self._discovered = {CONF_HOST: host, CONF_PORT: port}
         self._discovery_name = discovery_info.name.removesuffix(
             "._can-server._tcp.local."

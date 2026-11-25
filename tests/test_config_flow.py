@@ -246,3 +246,33 @@ async def test_reconfigure_duplicate(hass: HomeAssistant) -> None:
     )
     assert result["reason"] == "already_configured"
     assert entry.data["host"] == "192.0.2.1"
+
+
+async def test_reconfigure_duplicate_created_during_download(
+    hass: HomeAssistant,
+) -> None:
+    """Recheck endpoint ownership after awaiting the configuration server."""
+    entry = make_entry()
+    entry.add_to_hass(hass)
+
+    async def download(_url: str) -> tuple[dict, dict]:
+        other = MockConfigEntry(
+            domain="ampio",
+            version=2,
+            unique_id="192.0.2.2:20001",
+            data={**entry.data, "host": "192.0.2.2"},
+        )
+        other.add_to_hass(hass)
+        return CONFIG, {}
+
+    result = await entry.start_reconfigure_flow(hass)
+    with patch(
+        "custom_components.ampio.config_flow.AmpioFlowHandler.download_and_update_config",
+        side_effect=download,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**INPUT, "host": "192.0.2.2"}
+        )
+    assert result["reason"] == "already_configured"
+    assert entry.unique_id == "192.0.2.1:20001"
+    assert entry.data["host"] == "192.0.2.1"
