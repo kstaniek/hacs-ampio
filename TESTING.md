@@ -71,3 +71,14 @@ English and Polish strings are checked for matching keys and placeholders.
 
 The current acceptance policy is receive-only. Physical command checks and the
 stable version 2 dependency upgrade remain deferred.
+
+## RGBW brightness
+
+HA color and brightness are combined into Ampio's four raw output channel levels
+in the HA adapter. Brightness-only commands preserve the observed channel ratios;
+off/on restores the last observed nonzero color and brightness. Feedback reports
+integer brightness as the highest channel level and normalizes color independently.
+
+RGBW tests exercise real HA light services and capture exact CAN frames with both
+stable and beta libraries. Physical testing requires an explicitly designated
+device; save its channel levels before sending commands and restore them afterward.
