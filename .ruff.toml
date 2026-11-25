@@ -25,3 +25,10 @@ keep-runtime-typing = true
 
 [lint.mccabe]
 max-complexity = 25
+
+[lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101", # Pytest assertions
+    "PLR2004", # Expected protocol and state values
+    "SLF001", # Exercise library event delivery
+]

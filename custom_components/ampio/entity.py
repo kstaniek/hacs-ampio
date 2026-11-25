@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 class AmpioBaseEntity(Entity):
     """Base class for all Ampio entities."""
 
-    _attr_should_pool = False
+    _attr_should_poll = False
 
     def __init__(
         self,
