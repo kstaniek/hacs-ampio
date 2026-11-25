@@ -56,7 +56,8 @@
       "invalid_url": "URL must be http(s).",
       "cannot_connect": "Cannot download the file (HTTP error).",
       "timeout": "Timed out while downloading the file.",
-      "invalid_yaml": "The file must contain a YAML configuration mapping."
+      "invalid_yaml": "The file must contain a YAML configuration mapping.",
+      "invalid_host": "Enter an IP address or hostname."
     }
   }
 }

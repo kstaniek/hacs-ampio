@@ -55,7 +55,8 @@
       "invalid_url": "Adres URL musi używać protokołu http(s).",
       "cannot_connect": "Nie można pobrać pliku (błąd HTTP).",
       "timeout": "Przekroczono limit czasu podczas pobierania pliku.",
-      "invalid_yaml": "Plik musi zawierać konfigurację YAML w postaci mapowania."
+      "invalid_yaml": "Plik musi zawierać konfigurację YAML w postaci mapowania.",
+      "invalid_host": "Podaj adres IP lub nazwę hosta."
     },
     "flow_title": "{name}"
   }
