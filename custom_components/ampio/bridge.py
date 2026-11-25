@@ -51,7 +51,6 @@ class AmpioBridge:
             api_kwargs.update(interface="waveshare", channel="can0")
         self.api = AmpioCanBridge(self.ampio_config, **api_kwargs)
 
-        self.reset_jobs: list[core.CALLBACK_TYPE] = []
         self.config_entry.runtime_data = self
 
     @property
@@ -83,7 +82,7 @@ class AmpioBridge:
                 await self.api.start()
             setup_ok = True
         except TimeoutError:
-            pass
+            return False
         except Exception:
             self.logger.exception("Unknown error connecting to Ampio CAN Bridge")
             return False
@@ -117,7 +116,9 @@ class AmpioBridge:
         await self.hass.config_entries.async_forward_entry_setups(
             self.config_entry, PLATFORMS
         )
-        self.reset_jobs.append(self.config_entry.add_update_listener(_update_listener))
+        self.config_entry.async_on_unload(
+            self.config_entry.add_update_listener(_update_listener)
+        )
         return True
 
     async def async_reset(self) -> bool:

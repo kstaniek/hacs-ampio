@@ -45,7 +45,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: AmpioConfigEntry) -> boo
 
 async def async_unload_entry(hass: HomeAssistant, entry: AmpioConfigEntry) -> bool:
     """Unload a config entry."""
-    await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        return False
 
     if entry.runtime_data is None:
         return True

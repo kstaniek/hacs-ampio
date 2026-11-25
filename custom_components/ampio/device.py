@@ -61,8 +61,8 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
     @callback
     def remove_device(ampio_resource_id: str) -> None:
         """Remove Ampio Device from device registry."""
-        if device := dev_reg.async_get_device(
-            identifiers={(DOMAIN, ampio_resource_id)}
+        if device := dev_reg.async_get_device_by_identifier(
+            (DOMAIN, ampio_resource_id), entry.entry_id
         ):
             dev_reg.async_remove_device(device.id)
 
