@@ -38,7 +38,7 @@ def input_schema(defaults: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(CONF_HOST, default=defaults.get(CONF_HOST, "")): vol.All(
-                cv.string, str.strip, vol.Length(min=1)
+                cv.string, vol.Length(min=1)
             ),
             vol.Required(
                 CONF_PORT, default=defaults.get(CONF_PORT, DEFAULT_PORT)
@@ -96,6 +96,8 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Validate input and create or update an endpoint without duplicates."""
         host = user_input[CONF_HOST].strip()
+        if not host:
+            return self._show_form(step_id, user_input, {CONF_HOST: "invalid_host"})
         port = int(user_input[CONF_PORT])
         url_str = user_input[CONF_CONFIG_URL].strip()
         unique_id = endpoint_id(host, port)

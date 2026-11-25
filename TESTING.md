@@ -82,3 +82,10 @@ integer brightness as the highest channel level and normalizes color independent
 RGBW tests exercise real HA light services and capture exact CAN frames with both
 stable and beta libraries. Physical testing requires an explicitly designated
 device; save its channel levels before sending commands and restore them afterward.
+
+## Configuration UI serialization
+
+HTTP tests use HA's authenticated configuration endpoints to serialize manual,
+reconfiguration, discovery, and error forms. They also submit reconfiguration to
+refresh cached YAML. These tests catch validators that work in Python but cannot
+be serialized into browser form fields.
