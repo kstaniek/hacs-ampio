@@ -16,7 +16,7 @@ python -m venv .venv-tests
 .venv-tests/bin/python -m pytest -q
 ```
 
-Repeat with `aioampio==2.0.0b2` for beta compatibility. This does not change the
+Repeat with `aioampio==2.0.0b3` for beta compatibility. This does not change the
 integration manifest, which remains pinned to the stable library.
 
 ## Local development Core
@@ -24,7 +24,7 @@ integration manifest, which remains pinned to the stable library.
 Using the sibling Core checkout and its virtual environment:
 
 ```sh
-../core/.venv/bin/python -m pip install -e ../core -e ../core/packages/pytest-homeassistant aioampio==2.0.0b2
+../core/.venv/bin/python -m pip install -e ../core -e ../core/packages/pytest-homeassistant aioampio==2.0.0b3
 ../core/.venv/bin/python -m pytest -q
 ```
 
@@ -51,3 +51,23 @@ registration, light service commands and brightness restoration, reload without
 listener leaks or registry identity changes, device removal, initialization
 timeouts, and failed platform unloading. These automated checks do not establish
 physical device behavior or replace an observed development-gateway test.
+
+## Discovery and migration
+
+Manual setup and discovery both require an HTTP(S) URL containing a YAML mapping.
+Discovery offers a confirmation form with the advertised address and port filled
+in; it never creates an entry automatically. Reconfiguration updates endpoint
+identity while preserving the config-entry ID and bridge device registry ID.
+
+Version 1 entries cache the bundled `custom_components/ampio/config.yaml` during
+migration, retaining existing cached configuration when present. Migrated bundled
+configurations have an empty configuration URL; provide a URL when reconfiguring
+them. A missing or invalid bundled configuration leaves the original entry
+untouched and reports migration failure.
+
+Flow tests cover discovery confirmation and duplicates, input/download failures,
+reconfiguration without extra reloads, and migration failure preservation.
+English and Polish strings are checked for matching keys and placeholders.
+
+The current acceptance policy is receive-only. Physical command checks and the
+stable version 2 dependency upgrade remain deferred.
