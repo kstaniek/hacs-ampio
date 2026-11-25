@@ -11,7 +11,6 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.typing import StateType
 
 from .entity import AmpioBaseEntity
 
@@ -22,6 +21,7 @@ if TYPE_CHECKING:
     from aioampio.controllers.sensor import SensorsController
     from aioampio.models.sensor import Sensor
     from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+    from homeassistant.helpers.typing import StateType
 
     from .bridge import AmpioBridge, AmpioConfigEntry
 

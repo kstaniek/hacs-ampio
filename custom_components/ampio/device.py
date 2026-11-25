@@ -48,9 +48,13 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
             **params,
         )
 
-        area = ar_reg.async_get_area_by_name(ampio_resource.area)
+        area = (
+            ar_reg.async_get_area_by_name(ampio_resource.area)
+            if ampio_resource.area
+            else None
+        )
         if area:
-            dev_reg.async_update_device(device.id, area_id=area.id)
+            device = dev_reg.async_update_device(device.id, area_id=area.id)
 
         return device
 
@@ -66,20 +70,18 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
     def handle_device_event(evt_type: EventType, ampio_resource: Device) -> None:
         """Handle events from Ampio devices."""
         if evt_type == EventType.RESOURCE_DELETED:
-            remove_device(ampio_resource.can_id)
+            remove_device(ampio_resource.id)
 
         else:
             add_device(ampio_resource)
 
     ampio_devices = list(dev_controller)
-    known_devices = [add_device(ampio_device) for ampio_device in ampio_devices]
-    # check for devices that no longr exit and remove them
+    known_device_ids = {add_device(ampio_device).id for ampio_device in ampio_devices}
     for device in dr.async_entries_for_config_entry(dev_reg, entry.entry_id):
-        if device not in known_devices:
-            dev_reg.async_remove_device(device.id)
-
-    for device in dr.async_entries_for_config_entry(dev_reg, entry.entry_id):
-        if device not in known_devices:
+        if (
+            device.id not in known_device_ids
+            and (DOMAIN, entry.unique_id) not in device.identifiers
+        ):
             dev_reg.async_remove_device(device.id)
 
     entry.async_on_unload(dev_controller.subscribe(handle_device_event))
