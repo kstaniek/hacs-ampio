@@ -169,6 +169,15 @@ the TCP gateway connection is healthy. Reported socket/notifier failures and
 explicit reconnect requests still recover the transport. Monitoring sends no
 probes or device commands.
 
+## Development
+
+Install `uv`, then run `scripts/setup` and `scripts/develop`. When `../core` exists,
+the scripts use that checkout in an isolated `.venv`; otherwise they use the
+minimum supported HA release. The manifest-pinned aioampio wheel is the default.
+Use `--aioampio ../aioampio` explicitly when developing the library too.
+Existing `.dev-config` data is retained. See [TESTING.md](TESTING.md) for options,
+tests, and the devcontainer workflow.
+
 ## Support
 
 For issues or feature requests, please open an issue on the [GitHub repository](https://github.com/kstaniek/hacs-ampio/issues).

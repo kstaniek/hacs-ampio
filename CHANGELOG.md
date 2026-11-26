@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1
+
+- Rebuild development setup around an isolated `.venv`, editable sibling Core
+  when available, and the manifest-pinned aioampio wheel by default. Add explicit
+  local-library and minimum-HA modes, dependency checks, and duplicate-port guards.
+- Preserve development configuration and make integration links portable between
+  the host and container without replacing another installation.
+- Update the devcontainer to Python 3.14 with uv, native dependencies, and a
+  separate venv volume. Align lint tooling and document the reproducible workflow.
+
 ## 0.5.0
 
 - Add an enabled-by-default CAN Bridge **Reconnects** diagnostic counter using

@@ -8,32 +8,84 @@ lifecycle are tested here using the official
 
 ## Minimum supported Home Assistant
 
-Use Python 3.14 in a fresh virtual environment:
+Install `uv`, then prepare an isolated environment with the minimum supported HA
+version read from `hacs.json`:
 
 ```sh
-python -m venv .venv-tests
-.venv-tests/bin/python -m pip install homeassistant==2026.11.0 pytest-homeassistant==2026.11.0 aioampio==2.1.0
+scripts/setup --stable --venv .venv-tests --config .dev-config-tests
 .venv-tests/bin/python -m pytest -q
 ```
 
 Repeat with `aioampio==2.0.2` for fallback notification coverage and
 `aioampio==1.0.2` for legacy compatibility. This does not change the
 integration manifest, which remains pinned to `aioampio==2.1.0`.
+For example, install a test version with
+`uv pip install --python .venv-tests/bin/python aioampio==2.0.2`, then run pytest
+directly. Starting through `scripts/develop` restores the manifest pin.
 
 ## Local development Core
 
-Using the sibling Core checkout and its virtual environment:
+With `../core` present, setup installs that checkout and its official test fixtures
+in editable mode into this repo's `.venv`. Core's own `.venv` is left untouched:
 
 ```sh
-../core/.venv/bin/python -m pip install -e ../core -e ../core/packages/pytest-homeassistant aioampio==2.1.0
-../core/.venv/bin/python -m pytest -q
+scripts/setup
+.venv/bin/python -m pytest -q
+scripts/develop
 ```
 
-To test uncommitted library changes instead of an installed wheel:
+Without a sibling Core checkout, setup uses the minimum HA version instead.
+Use `--core /path/to/core` to select another checkout. Python comes from Core's
+`.python-version`, or this repository's pin in stable mode. Existing environments
+with another Python version are rejected; choose a fresh path with `--venv`.
+
+The default library is the published version pinned in the integration manifest.
+Use an explicit option for uncommitted library changes:
 
 ```sh
-PYTHONPATH="$(realpath ../aioampio)" ../core/.venv/bin/python -m pytest -q
+scripts/setup --aioampio ../aioampio
+.venv/bin/python -m pytest -q
+scripts/develop --aioampio ../aioampio
 ```
+
+Pass the same source options to setup and develop. Running without `--aioampio`
+selects the published library again, even if the local checkout has the same
+version. Local-library mode skips HA's automatic installation for aioampio only,
+so HA cannot silently replace an editable install. Other integration dependencies
+are still installed normally.
+
+`scripts/develop --setup` refreshes dependencies and starts HA;
+`scripts/develop --setup-only` prepares the environment without starting it.
+Normal startup detects changed manifest pins, source choices, and broken imports,
+and runs setup when needed. It prints the actual Python, HA, and library paths.
+Ambient `PYTHONPATH`, `PYTHONHOME`, and active venv settings do not select imports.
+
+The default configuration is `.dev-config`. Existing YAML, storage, and integration
+entries are preserved. The scripts link this checkout into `custom_components` and
+refuse to replace a different installed copy or link. Use `--config /path/to/config`
+for another development configuration. An occupied HTTP port is rejected before
+launch; stop the existing dev instance, or set another `http.server_port` in the
+chosen YAML. `--debug` explicitly enables HA/asyncio debug mode.
+
+If `uv` cannot download the pinned Python, check `command -v uv` and `uv --version`.
+Update it using the manager that installed it, for example `mise upgrade uv` for a
+mise-managed installation. `uv self update` applies only to standalone installs.
+
+### Devcontainer
+
+Rebuild the container after changing `.devcontainer.json` or `Dockerfile.dev`.
+The container uses Python 3.14 and pinned uv, with FFmpeg, TurboJPEG, and libpcap
+system dependencies. The parent workspace folder is mounted so sibling Core and
+aioampio checkouts remain available. If Core is absent, stable setup still works.
+A dedicated Docker volume holds `.venv`, separate from the host environment.
+VS Code selects that interpreter. Run `scripts/develop` in the container terminal.
+The container does not start HA automatically.
+For an existing configuration with an absolute integration symlink, run
+`scripts/setup` on the host once before opening the container. It converts a link
+to this checkout into a relative link without replacing other installations.
+
+The setup is for this adapter and its tests. Work on Core itself should follow
+Core's own development instructions and bootstrap requirements.
 
 CI tests all three library versions with HA 2026.11.0 and development Core pinned to
 `dc542e15890f1454c1fad76a1df3f4b8afa686dc`. Update the pinned revision deliberately
