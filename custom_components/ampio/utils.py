@@ -2,6 +2,20 @@
 
 from __future__ import annotations
 
+from .const import DEFAULT_CAN_CHANNEL, DEFAULT_CAN_INTERFACE
+
+
+def describe_can_connection(
+    host: str,
+    port: int,
+    *,
+    interface: str = DEFAULT_CAN_INTERFACE,
+    channel: str = DEFAULT_CAN_CHANNEL,
+) -> str:
+    """Describe the active transport for device metadata and entry titles."""
+    address = f"[{host}]" if ":" in host else host
+    return f"CAN Bridge ({interface} / {channel}, {address}:{port})"
+
 
 def hex_to_int(value: str) -> int:
     """

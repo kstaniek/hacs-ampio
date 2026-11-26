@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from aioampio import AmpioBridge
 from aioampio.controllers.events import EventType
 from homeassistant.config_entries import ConfigEntryState
@@ -14,10 +15,11 @@ from pytest_homeassistant.common import MockConfigEntry
 from .conftest import CONFIG
 
 
-def make_entry() -> MockConfigEntry:
+def make_entry(title: str = "192.0.2.1:20001") -> MockConfigEntry:
     """Provide a cached config without fetching a URL."""
     return MockConfigEntry(
         domain="ampio",
+        title=title,
         version=2,
         unique_id="192.0.2.1:20001",
         data={
@@ -29,9 +31,11 @@ def make_entry() -> MockConfigEntry:
     )
 
 
-async def setup_entry(hass: HomeAssistant) -> MockConfigEntry:
+async def setup_entry(
+    hass: HomeAssistant, *, title: str = "192.0.2.1:20001"
+) -> MockConfigEntry:
     """Set up the entry through the real HA loader."""
-    entry = make_entry()
+    entry = make_entry(title)
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -48,15 +52,25 @@ def entity_id(hass: HomeAssistant, domain: str, resource: str) -> str:
     return result
 
 
-async def test_setup(hass: HomeAssistant, apis: list[AmpioBridge]) -> None:
+@pytest.mark.parametrize(
+    ("title", "expected_title"),
+    [
+        ("192.0.2.1:20001", "CAN Bridge (waveshare / can0, 192.0.2.1:20001)"),
+        ("Garage gateway", "Garage gateway"),
+    ],
+)
+async def test_setup(
+    hass: HomeAssistant, apis: list[AmpioBridge], title: str, expected_title: str
+) -> None:
     """Retain device areas, the bridge device, and all configured entities."""
-    entry = await setup_entry(hass)
+    entry = await setup_entry(hass, title=title)
     apis[0].start.assert_awaited_once_with()
     apis[0].send.assert_not_awaited()
     device = dr.async_get(hass).async_get_device_by_identifier(
         ("ampio", "00000123"), entry.entry_id
     )
     assert device is not None
+    assert device.manufacturer == "Ampio"
     assert (
         dr.async_get(hass).async_get_device_by_identifier(
             ("ampio", entry.unique_id), entry.entry_id
@@ -64,9 +78,15 @@ async def test_setup(hass: HomeAssistant, apis: list[AmpioBridge]) -> None:
         is not None
     )
     assert ar.async_get(hass).async_get_area(device.area_id).name == "Test room"
-    assert (
-        len(er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)) == 9
+    assert len(
+        er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
+    ) == (15 if hasattr(apis[0], "module_metrics") else 9)
+    gateway = dr.async_get(hass).async_get_device_by_identifier(
+        ("ampio", entry.unique_id), entry.entry_id
     )
+    assert gateway.model == "CAN Bridge (waveshare / can0, 192.0.2.1:20001)"
+    assert gateway.manufacturer == "Waveshare"
+    assert entry.title == expected_title
     assert hass.states.get(entity_id(hass, "light", "light1")) is not None
 
 

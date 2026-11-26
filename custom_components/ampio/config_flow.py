@@ -9,20 +9,31 @@ import aiohttp
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 import yaml
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from yarl import URL
 
 from .const import (
     CONF_CONFIG,
     CONF_CONFIG_URL,
+    CONF_MODULE_TIMEOUT,
+    CONF_MODULE_TIMEOUTS,
     CONFIG_VERSION,
+    DEFAULT_MODULE_TIMEOUT,
     DEFAULT_PORT,
     DOMAIN,
     MAX_PORT,
 )
+from .utils import describe_can_connection
 
 if TYPE_CHECKING:
     from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
@@ -54,6 +65,12 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
     """Handle manual setup, discovery, and reconfiguration."""
 
     VERSION = CONFIG_VERSION
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(_config_entry: ConfigEntry) -> AmpioOptionsFlow:
+        """Configure module silence handling separately from the CAN configuration."""
+        return AmpioOptionsFlow()
 
     def __init__(self) -> None:
         """Initialize discovery form defaults."""
@@ -117,6 +134,18 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
                 CONF_CONFIG: config,
             }
             if entry is not None:
+                old_host = entry.data[CONF_HOST]
+                old_port = int(entry.data[CONF_PORT])
+                automatic_titles = {
+                    entry.unique_id,
+                    f"{old_host}:{old_port}",
+                    describe_can_connection(old_host, old_port),
+                }
+                title = (
+                    describe_can_connection(host, port)
+                    if entry.title in automatic_titles
+                    else entry.title
+                )
                 registry = dr.async_get(self.hass)
                 if entry.unique_id is not None and (
                     device := registry.async_get_device_by_identifier(
@@ -138,13 +167,15 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
                 return update(
                     entry,
                     unique_id=unique_id,
-                    title=f"{host}:{port}",
+                    title=title,
                     data_updates=data,
                     reason="reconfigure_successful",
                 )
             await self.async_set_unique_id(unique_id)
             self._abort_if_unique_id_configured()
-            return self.async_create_entry(title=f"{host}:{port}", data=data)
+            return self.async_create_entry(
+                title=describe_can_connection(host, port), data=data
+            )
         return self._show_form(step_id, user_input, errors)
 
     def _endpoint_configured(self, unique_id: str, entry_id: str | None = None) -> bool:
@@ -225,3 +256,78 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             return await self._async_submit(user_input, step_id="discovery_confirm")
         return self._show_form("discovery_confirm", self._discovered)
+
+
+def _monitoring_options(
+    entry: ConfigEntry, user_input: dict[str, Any]
+) -> dict[str, Any]:
+    """Validate integer timeout values and normalize configured CAN identifiers."""
+
+    def timeout(value: Any) -> int:
+        result = vol.All(vol.Coerce(float), vol.Range(min=0, max=86400))(value)
+        if not result.is_integer():
+            raise ValueError
+        return int(result)
+
+    known_ids = {
+        device["can_id"] for device in entry.data[CONF_CONFIG].get("devices", [])
+    }
+    overrides = {}
+    for key, value in user_input.get(CONF_MODULE_TIMEOUTS, {}).items():
+        can_id = int(key, 16)
+        normalized = f"{can_id:08x}"
+        if can_id not in known_ids or normalized in overrides:
+            raise ValueError
+        overrides[normalized] = timeout(value)
+    return {
+        **entry.options,
+        CONF_MODULE_TIMEOUT: timeout(user_input[CONF_MODULE_TIMEOUT]),
+        CONF_MODULE_TIMEOUTS: overrides,
+    }
+
+
+class AmpioOptionsFlow(OptionsFlow):
+    """Configure passive module monitoring without changing library configuration."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Set the global silence timeout and optional per-module overrides."""
+        runtime = getattr(self.config_entry, "runtime_data", None)
+        if runtime is not None and runtime.traffic is None:
+            return self.async_abort(reason="traffic_not_supported")
+        errors = {}
+        if user_input is not None:
+            try:
+                options = _monitoring_options(self.config_entry, user_input)
+            except (ValueError, TypeError, AttributeError, vol.Invalid):
+                errors["base"] = "invalid_module_timeout"
+            else:
+                return self.async_create_entry(title="", data=options)
+        defaults = user_input if user_input is not None else self.config_entry.options
+        return self.async_show_form(
+            step_id="init",
+            errors=errors,
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_MODULE_TIMEOUT,
+                        default=defaults.get(
+                            CONF_MODULE_TIMEOUT, DEFAULT_MODULE_TIMEOUT
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=86400,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="s",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_MODULE_TIMEOUTS,
+                        default=defaults.get(CONF_MODULE_TIMEOUTS, {}),
+                    ): selector.ObjectSelector(),
+                }
+            ),
+        )

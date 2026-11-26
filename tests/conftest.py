@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
+import can
 import pytest
 from aioampio import AmpioBridge
 
@@ -95,6 +96,23 @@ def apis() -> Iterator[list[AmpioBridge]]:
     ) -> AmpioBridge:
         api = AmpioBridge(cfg, interface=interface, channel=channel, **kwargs)
         api.start = AsyncMock()
+        if hasattr(api, "module_metrics"):
+
+            async def start() -> None:
+                api._connection_state = type(api.connection_state).CONNECTED
+                api._reset_connect_state()
+                for device in api.devices:
+                    api._on_rx_received(
+                        can.Message(
+                            arbitration_id=device.can_id,
+                            data=b"\xfe\xff",
+                            is_extended_id=True,
+                        ),
+                        api._connected_since_mono,
+                    )
+                    api._on_rx_message_processed()
+
+            api.start.side_effect = start
         api.stop = AsyncMock()
         api.send = AsyncMock()
         instances.append(api)

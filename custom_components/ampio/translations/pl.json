@@ -59,5 +59,40 @@
       "invalid_host": "Podaj adres IP lub nazwę hosta."
     },
     "flow_title": "{name}"
+  },
+  "entity": {
+    "sensor": {
+      "rx_total": {
+        "name": "Odebrane ramki"
+      },
+      "tx_total": {
+        "name": "Wysłane ramki"
+      },
+      "last_rx_at": {
+        "name": "Ostatnia odebrana ramka"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Monitorowanie modułów",
+        "description": "Brak ramek oznacza niedostępność modułu i nie powoduje ponownego połączenia z bramką. Wartość 0 wyłącza limit. Opcjonalne wyjątki: identyfikator CAN w zapisie szesnastkowym → sekundy, np. `00001879: 120`.",
+        "data": {
+          "module_timeout": "Limit braku ramek",
+          "module_timeouts": "Limity poszczególnych modułów"
+        },
+        "data_description": {
+          "module_timeout": "Sekundy od ostatniej odebranej ramki; 0 wyłącza limit.",
+          "module_timeouts": "Mapa identyfikatorów CAN i limitów w sekundach. Pusta mapa używa limitu domyślnego."
+        }
+      }
+    },
+    "error": {
+      "invalid_module_timeout": "Użyj znanych identyfikatorów CAN i limitów od 0 do 86400 sekund."
+    },
+    "abort": {
+      "traffic_not_supported": "Monitorowanie wymaga wersji aioampio obsługującej statystyki modułów."
+    }
   }
 }
