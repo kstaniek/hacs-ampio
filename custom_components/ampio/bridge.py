@@ -14,8 +14,15 @@ from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import floor_registry as fr
 
-from .const import CONF_CONFIG, CONF_CONFIG_URL
+from .const import (
+    CONF_CONFIG,
+    CONF_CONFIG_URL,
+    DEFAULT_CAN_CHANNEL,
+    DEFAULT_CAN_INTERFACE,
+)
 from .device import async_setup_devices
+from .traffic import ModuleTrafficMonitor
+from .utils import describe_can_connection
 
 PLATFORMS = [
     Platform.LIGHT,
@@ -48,10 +55,33 @@ class AmpioBridge:
         api_kwargs: dict[str, Any] = {CONF_HOST: self.host, CONF_PORT: self.port}
         # aioampio 0.2.3 predates the python-can interface/channel parameters.
         if "interface" in signature(AmpioCanBridge).parameters:
-            api_kwargs.update(interface="waveshare", channel="can0")
+            api_kwargs.update(interface=self.interface, channel=self.channel)
         self.api = AmpioCanBridge(self.ampio_config, **api_kwargs)
+        self.traffic: ModuleTrafficMonitor | None = None
 
         self.config_entry.runtime_data = self
+
+    @property
+    def interface(self) -> str:
+        """Return the CAN backend currently used by this integration."""
+        return DEFAULT_CAN_INTERFACE
+
+    @property
+    def channel(self) -> str:
+        """Return the CAN channel currently used by this integration."""
+        return DEFAULT_CAN_CHANNEL
+
+    @property
+    def manufacturer(self) -> str | None:
+        """Return the known manufacturer of the current CAN gateway hardware."""
+        return "Waveshare" if self.interface == "waveshare" else None
+
+    @property
+    def connection_description(self) -> str:
+        """Describe the gateway transport for the device information model line."""
+        return describe_can_connection(
+            self.host, self.port, interface=self.interface, channel=self.channel
+        )
 
     @property
     def url(self) -> str:
@@ -112,6 +142,8 @@ class AmpioBridge:
             else:
                 ar_reg.async_update(a.id, name=area.name, floor_id=fid, icon=area.icon)
 
+        # Older stable aioampio releases do not expose module traffic yet.
+        self._start_traffic_monitor()
         await async_setup_devices(self)
         await self.hass.config_entries.async_forward_entry_setups(
             self.config_entry, PLATFORMS
@@ -120,6 +152,12 @@ class AmpioBridge:
             self.config_entry.add_update_listener(_update_listener)
         )
         return True
+
+    def _start_traffic_monitor(self) -> None:
+        """Use module traffic only when the installed library provides it."""
+        if hasattr(self.api, "module_metrics"):
+            self.traffic = ModuleTrafficMonitor(self)
+            self.traffic.start()
 
     async def async_reset(self) -> bool:
         """Reset the bridge connection."""

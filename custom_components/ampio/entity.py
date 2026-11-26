@@ -55,8 +55,24 @@ class AmpioBaseEntity(Entity):
             )
         self._last_state = None
 
+    @property
+    def available(self) -> bool:
+        """Expose module silence without changing registry identity or state data."""
+        if self.bridge.traffic is None:
+            return True
+        return self.bridge.traffic.available(
+            self.device.can_id if self.device is not None else None
+        )
+
     async def async_added_to_hass(self) -> None:
         """Handle entity which was added to hass."""
+        if self.bridge.traffic is not None:
+            self.async_on_remove(
+                self.bridge.traffic.subscribe(
+                    self.device.can_id if self.device is not None else None,
+                    self.async_write_ha_state,
+                )
+            )
         if self.resource.area:
             area = ar.async_get(self.hass).async_get_area_by_name(self.resource.area)
             if area:

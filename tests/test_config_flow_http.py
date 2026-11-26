@@ -20,6 +20,24 @@ from .test_integration import make_entry
 FLOW_URL = "/api/config/config_entries/flow"
 
 
+async def test_monitoring_options_form_http(
+    hass: HomeAssistant, config_client: TestClient
+) -> None:
+    """Serialize numeric and object selectors through HA's actual options endpoint."""
+    entry = make_entry()
+    entry.add_to_hass(hass)
+    response = await config_client.post(
+        "/api/config/config_entries/options/flow", json={"handler": entry.entry_id}
+    )
+    assert response.status == HTTPStatus.OK
+    result = await response.json()
+    assert result["type"] == "form"
+    fields = {field["name"]: field for field in result["data_schema"]}
+    assert fields["module_timeout"]["default"] == 60
+    assert "number" in fields["module_timeout"]["selector"]
+    assert "object" in fields["module_timeouts"]["selector"]
+
+
 @pytest.fixture
 async def config_client(
     hass: HomeAssistant, hass_client: ClientSessionGenerator

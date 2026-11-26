@@ -65,6 +65,7 @@ async def test_manual_setup(
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["data"] == {**INPUT, "ampio_config": CONFIG}
     assert result["result"].unique_id == "192.0.2.1:20001"
+    assert result["result"].title == "CAN Bridge (waveshare / can0, 192.0.2.1:20001)"
 
 
 @pytest.mark.parametrize(
@@ -202,11 +203,22 @@ async def test_discovery_in_progress(hass: HomeAssistant) -> None:
     assert second["reason"] == "already_in_progress"
 
 
+@pytest.mark.parametrize(
+    ("title", "expected_title"),
+    [
+        ("192.0.2.1:20001", "CAN Bridge (waveshare / can0, 192.0.2.2:20001)"),
+        ("Garage gateway", "Garage gateway"),
+    ],
+)
 async def test_reconfigure_preserves_bridge_device(
-    hass: HomeAssistant, apis: list, aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant,
+    apis: list,
+    aioclient_mock: AiohttpClientMocker,
+    title: str,
+    expected_title: str,
 ) -> None:
     """Move an endpoint and reload once while retaining the existing bridge device."""
-    entry = await setup_entry(hass)
+    entry = await setup_entry(hass, title=title)
     registry = dr.async_get(hass)
     before = registry.async_get_device_by_identifier(
         ("ampio", entry.unique_id), entry.entry_id
@@ -221,6 +233,7 @@ async def test_reconfigure_preserves_bridge_device(
     await hass.async_block_till_done()
     assert result["reason"] == "reconfigure_successful"
     assert entry.unique_id == "192.0.2.2:20001"
+    assert entry.title == expected_title
     assert entry.data["host"] == "192.0.2.2"
     after = registry.async_get_device_by_identifier(
         ("ampio", entry.unique_id), entry.entry_id

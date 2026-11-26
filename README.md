@@ -34,6 +34,66 @@ After installation, configure the integration via the Home Assistant UI:
 2. Click **Add Integration** and search for "Ampio".
 3. Follow the setup instructions.
 
+## Module traffic diagnostics
+
+The CAN Bridge's **Device information** model line includes the active interface,
+channel and network endpoint, for example:
+`CAN Bridge (waveshare / can0, 172.31.11.67:20001)`.
+The summary uses the same settings passed to `aioampio` and creates no additional
+entity. Interface and channel selection is not configurable yet; the integration
+currently uses `waveshare` and `can0`.
+The bridge manufacturer is Waveshare; the attached CAN modules remain Ampio.
+Integration entries use the same descriptive connection summary. Existing
+endpoint-only titles are updated on setup; user-defined titles are preserved.
+
+This release uses `aioampio==2.0.0`. The library remains independent of Home
+Assistant; this integration owns diagnostic entities and availability policy.
+
+With the new API, the CAN Bridge device has global **RX frames**, **TX frames**,
+and **Last frame received** diagnostic sensors. Each configured module has the
+same three diagnostics, including modules without other sensors. RX counts valid
+frames received from that module, even when their values are unchanged or their
+payload type has no decoder. TX counts frames successfully sent by this bridge
+to that module, including every fragment of a multi-frame command. It does not
+count other controllers' commands and does not prove receipt by the module.
+Counters survive gateway reconnects and reset on integration reload or restart.
+Their HA states refresh every 30 seconds and remain readable when a module is
+unavailable. **Last frame received** entities are disabled by default to avoid
+frequent Activity and History entries. Enable them on the device's entity page
+when troubleshooting. Disabling these entities does not affect the watchdog.
+Existing enabled timestamp entities must be disabled separately in HA.
+Last-frame timestamps record actual UTC reception time and remain
+unchanged during silence or disconnection; they are unknown until the first
+frame arrives. HA displays these timestamps in the user's local time. Gateway
+counters use the library's global bridge metrics, including successful sends
+that cannot be attributed to a configured module.
+
+Open the integration's **Configure** options to change the default 60-second
+silence timeout. Per-module overrides are a mapping of hexadecimal CAN IDs to
+integer seconds, for example:
+
+```yaml
+"00001879": 120
+"00001ecc": 0
+```
+
+Zero disables the silence timeout for that module (or globally). Overrides take
+precedence over the global timeout. These options belong to Home Assistant;
+do not add them to the external Ampio YAML configuration.
+
+Availability is checked once per second using monotonic RX ages. A monitored
+module needs fresh RX after startup or reconnect. After its timeout expires,
+all functional entities belonging to it become unavailable; the next valid
+frame restores availability even if no resource value changed. A reported
+gateway disconnection affects all functional entities, including modules with
+their silence timeout disabled.
+
+Silence never requests a gateway reconnect with the new library defaults.
+A crashed or unpowered module, or a broken CAN bus, can remain silent while
+the TCP gateway connection is healthy. Reported socket/notifier failures and
+explicit reconnect requests still recover the transport. Monitoring sends no
+probes or device commands.
+
 ## Support
 
 For issues or feature requests, please open an issue on the [GitHub repository](https://github.com/kstaniek/hacs-ampio/issues).

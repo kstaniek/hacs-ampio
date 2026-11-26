@@ -44,6 +44,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: AmpioConfigEntry) -> bool:
     """Set up a bridge from config entry."""
     bridge = AmpioBridge(hass, entry)
+    if entry.title in {entry.unique_id, f"{bridge.host}:{bridge.port}"}:
+        hass.config_entries.async_update_entry(
+            entry, title=bridge.connection_description
+        )
     if not await bridge.async_initialize_bridge():
         return False
 
@@ -51,8 +55,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: AmpioConfigEntry) -> boo
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.unique_id)},
-        manufacturer="Ampio",
-        model="Ampio",
+        manufacturer=bridge.manufacturer,
+        model=bridge.connection_description,
         name="Ampio CAN Bridge",
     )
     return True

@@ -59,5 +59,40 @@
       "invalid_yaml": "The file must contain a YAML configuration mapping.",
       "invalid_host": "Enter an IP address or hostname."
     }
+  },
+  "entity": {
+    "sensor": {
+      "rx_total": {
+        "name": "RX frames"
+      },
+      "tx_total": {
+        "name": "TX frames"
+      },
+      "last_rx_at": {
+        "name": "Last frame received"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Module monitoring",
+        "description": "Silence makes module entities unavailable without reconnecting the gateway. Use 0 to disable a silence timeout. Optional overrides map hexadecimal CAN IDs to seconds, for example `00001879: 120`.",
+        "data": {
+          "module_timeout": "Module silence timeout",
+          "module_timeouts": "Per-module timeout overrides"
+        },
+        "data_description": {
+          "module_timeout": "Seconds since the last received frame; 0 disables the timeout.",
+          "module_timeouts": "Mapping of CAN IDs to timeouts in seconds. An empty mapping uses the global timeout."
+        }
+      }
+    },
+    "error": {
+      "invalid_module_timeout": "Use configured hexadecimal CAN IDs and timeouts from 0 to 86400 seconds."
+    },
+    "abort": {
+      "traffic_not_supported": "Module monitoring requires an aioampio version with per-module traffic metrics."
+    }
   }
 }
