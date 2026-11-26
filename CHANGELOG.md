@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- Add native on/off groups for MREL8S relay modules (model 4), using one masked
+  frame per action. Require aioampio 2.3.0. Individual relay feedback updates
+  group state; existing individual lights and MLED dimming remain available.
+
 ## 0.6.1
 
 - Derive native group light names and initial entity IDs from the YAML `name`

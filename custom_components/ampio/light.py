@@ -278,6 +278,11 @@ class AmpioMaskedLightGroup(AmpioLight):
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Apply one common level and remember it only after successful submission."""
         async with self._group_command_lock:
+            if not self.resource.supports_dimming:
+                await self.async_command(
+                    self.controller.set_state(id=self.resource.id, on=True)
+                )
+                return
             brightness = kwargs.get("brightness")
             if brightness is None:
                 brightness = self._group_brightness

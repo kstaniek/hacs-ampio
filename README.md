@@ -57,10 +57,11 @@ provide a valid configuration URL to recover the existing entry.
 
 ### Native masked light groups
 
-With `aioampio==2.2.0`, add `light_groups` alongside a device's existing `lights`
-in the external Ampio YAML. Each group creates an additional dimmable light;
-its individual members remain independently controllable. Groups currently
-support MLED modules (model 17) and outputs 1–16, with non-RGBW dimmable members.
+With `aioampio==2.3.0`, add `light_groups` alongside a device's existing `lights`
+in the external Ampio YAML. Each group creates an additional light; its individual
+members remain independently controllable. MLED modules (model 17) support
+dimmable non-RGBW members on outputs 1–16. MREL8S relay modules (model 4) support
+binary on/off members on outputs 1–8.
 
 For the Sofa outputs on module `can_id: 7775`:
 
@@ -76,6 +77,19 @@ Member IDs refer to existing lights on that device. The library derives mask
 `0xFC00` and sends exactly one frame for group on, off, or brightness. There is
 no batching delay. Group brightness commands apply a common level to all members.
 
+For the three Garage relays on module `can_id: 6686`:
+
+```yaml
+light_groups:
+  - id: garaz
+    name: Garaż
+    area: Garaż
+    members: [light3, light5, light6]
+```
+
+This creates an on/off light, initially `light.garaz`, using mask `0x0034`.
+It has no brightness control. Other relays on the module remain unaffected.
+
 The group's YAML `name` supplies its entity name and initial entity ID:
 `name: MLED Sofa` suggests `light.mled_sofa`, and `MLED Duża łazienka` suggests
 `light.mled_duza_lazienka`. If an existing helper already owns the ID, HA adds a
@@ -83,7 +97,7 @@ suffix such as `_2`. Existing registered IDs and user-selected names are
 preserved across reloads and YAML name changes. Replacing a helper while
 reusing its ID requires an explicit migration after verifying the native group.
 
-Plain on restores the last successfully submitted nonzero group brightness,
+For dimmable MLED groups, plain on restores the last successfully submitted nonzero group brightness,
 defaulting to 255 after startup. Off retains that remembered group level.
 
 Group state follows actual member feedback, including individual HA commands,
@@ -101,7 +115,7 @@ update dashboard/automation targets to use a native group where desired.
 Install the matching library/integration release before adding `light_groups`,
 then use **Reconfigure** to download and validate the YAML. For local development
 before publication, use `scripts/develop --aioampio ../aioampio`. The published
-2.2.0 library is required for standard HACS installation. See
+2.3.0 library is required for standard HACS installation. See
 [the configuration and protocol details](docs/masked-light-commands.md).
 
 ### Upgrading to 0.4.0
@@ -158,7 +172,7 @@ The bridge manufacturer is Waveshare; the attached CAN modules remain Ampio.
 Integration entries use the same descriptive connection summary. Existing
 endpoint-only titles are updated on setup; user-defined titles are preserved.
 
-This release uses `aioampio==2.2.0`. The library remains independent of Home
+This release uses `aioampio==2.3.0`. The library remains independent of Home
 Assistant; this integration owns diagnostic entities and availability policy.
 
 With the new API, the CAN Bridge device has global **RX frames**, **TX frames**,
