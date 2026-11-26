@@ -55,6 +55,47 @@ provide a valid configuration URL to recover the existing entry.
 
 ## Entity feedback and controls
 
+### Native masked light groups
+
+With `aioampio==2.2.0`, add `light_groups` alongside a device's existing `lights`
+in the external Ampio YAML. Each group creates an additional dimmable light;
+its individual members remain independently controllable. Groups currently
+support MLED modules (model 17) and outputs 1–16, with non-RGBW dimmable members.
+
+For the Sofa outputs on module `can_id: 7775`:
+
+```yaml
+light_groups:
+  - id: mled_sofa
+    name: MLED Sofa
+    area: Salon
+    members: [light11, light12, light13, light14, light15, light16]
+```
+
+Member IDs refer to existing lights on that device. The library derives mask
+`0xFC00` and sends exactly one frame for group on, off, or brightness. There is
+no batching delay. Group brightness commands apply a common level to all members.
+Plain on restores the last successfully submitted nonzero group brightness,
+defaulting to 255 after startup. Off retains that remembered group level.
+
+Group state follows actual member feedback, including individual HA commands,
+wall controls, and automations. It is on if any member is known on, off only
+when all members are known off, and otherwise unknown. Displayed brightness
+is the rounded average of known levels of members that are on. Commands do not
+optimistically change reported state. Overlapping groups are supported, and
+availability follows the owning module and gateway.
+
+The optional area is assigned when the group entity is first registered; later
+user area choices are preserved. Keep group IDs stable when renaming or editing
+membership to retain HA identity. Existing HA helper groups are separate;
+update dashboard/automation targets to use a native group where desired.
+
+Install the matching library/integration release before adding `light_groups`,
+then use **Reconfigure** to download and validate the YAML. For local development
+before publication, use `scripts/develop --aioampio ../aioampio`. The published
+2.2.0 library is required for standard HACS installation. See
+[the configuration and protocol details](docs/masked-light-commands.md).
+
 ### Upgrading to 0.4.0
 
 Read-only text status resources move from `text.<name>` to `sensor.<name>`.
@@ -109,7 +150,7 @@ The bridge manufacturer is Waveshare; the attached CAN modules remain Ampio.
 Integration entries use the same descriptive connection summary. Existing
 endpoint-only titles are updated on setup; user-defined titles are preserved.
 
-This release uses `aioampio==2.1.0`. The library remains independent of Home
+This release uses `aioampio==2.2.0`. The library remains independent of Home
 Assistant; this integration owns diagnostic entities and availability policy.
 
 With the new API, the CAN Bridge device has global **RX frames**, **TX frames**,

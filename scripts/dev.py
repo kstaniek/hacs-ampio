@@ -224,6 +224,9 @@ def check_port(python: Path, config: Path) -> int:
         ).strip()
     )
     with socket.socket() as sock:
+        # Match HA's listener so a recently stopped server's TIME_WAIT sockets
+        # do not prevent a restart; an active listener still rejects this bind.
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             sock.bind(("127.0.0.1", port))
         except OSError as err:

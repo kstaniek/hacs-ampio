@@ -18,7 +18,7 @@ scripts/setup --stable --venv .venv-tests --config .dev-config-tests
 
 Repeat with `aioampio==2.0.2` for fallback notification coverage and
 `aioampio==1.0.2` for legacy compatibility. This does not change the
-integration manifest, which remains pinned to `aioampio==2.1.0`.
+integration manifest, which is pinned to `aioampio==2.2.0`.
 For example, install a test version with
 `uv pip install --python .venv-tests/bin/python aioampio==2.0.2`, then run pytest
 directly. Starting through `scripts/develop` restores the manifest pin.
@@ -87,7 +87,7 @@ to this checkout into a relative link without replacing other installations.
 The setup is for this adapter and its tests. Work on Core itself should follow
 Core's own development instructions and bootstrap requirements.
 
-CI tests all three library versions with HA 2026.11.0 and development Core pinned to
+CI tests all four library versions with HA 2026.11.0 and development Core pinned to
 `dc542e15890f1454c1fad76a1df3f4b8afa686dc`. Update the pinned revision deliberately
 when advancing the development compatibility target.
 
@@ -150,6 +150,48 @@ integer brightness as the highest channel level and normalizes color independent
 RGBW tests exercise real HA light services and capture exact CAN frames with both
 current and legacy libraries. Physical testing requires an explicitly designated
 device; save its channel levels before sending commands and restore them afterward.
+
+## Native masked light groups
+
+Group tests require the aioampio 2.2.0 feature API and skip on older compatibility
+libraries. They create ordinary lights and native group lights through real HA
+setup, then exercise HA services against the library's real command encoder.
+Only CAN I/O is replaced. Coverage includes exact one-frame on/off/brightness
+payloads, independent indexed member commands, individual feedback propagation,
+overlapping membership, unknown/mixed states, shared brightness memory, transport
+failure, command ordering, module availability, and registry/area preservation.
+
+The standalone library additionally validates masks and membership, catches
+duplicate physical outputs and resource IDs, and tests dependency cleanup.
+Run both repositories' suites with the matching local library before its release.
+The integration's new dependency pin and CI matrix require aioampio 2.2.0 to be
+published before releasing this integration.
+
+Physical command encoding was accepted separately on module 7775 (MLED model 17,
+PCB 8, firmware 11701) on 2026-11-26. Kitchen mask 0x03FF and Sofa mask 0xFC00
+each passed on, off, and brightness-128 commands, with one frame per action and
+per-output RX verification. The user confirmed visible on/off and dimming
+behavior; a Kitchen change during Sofa off was identified as an automation.
+Kitchen was restored to 26/255 and Sofa to off. This acceptance tested the wire
+commands, not the subsequently implemented HA group entity lifecycle.
+
+A subsequent receive-only check initialized both native groups with the new
+library against the actual module. Eight received frames populated all 16
+member levels and both group states, with zero transmitted frames. This
+verifies live library feedback aggregation; HA service/lifecycle coverage
+remains synthetic.
+
+The existing development HA instance was subsequently restarted with the local
+2.2.0 library and the two groups added only to its cached configuration. The
+authenticated HA API confirmed both native group entities were available, off
+from member feedback, and assigned to Kitchen and Salon. The module TX counter
+remained zero. This additionally verifies live HA group setup and state reporting;
+implemented HA group command services remain covered by synthetic tests and the
+separate physical command-format acceptance above.
+
+Development startup tests reject an active HTTP listener with address reuse
+enabled and permit immediate restart after a server-side connection close
+leaves TIME_WAIT sockets on that port.
 
 ## Configuration UI serialization
 

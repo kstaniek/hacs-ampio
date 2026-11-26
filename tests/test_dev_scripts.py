@@ -77,8 +77,26 @@ def test_wrong_dependency_detected_with_python_optimization(
 def test_running_instance_port_is_not_reused(tmp_path: Path) -> None:
     """Check the configured port before starting another HA process."""
     with socket.socket() as server:
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind(("127.0.0.1", 0))
+        server.listen()
         port = server.getsockname()[1]
         (tmp_path / "configuration.yaml").write_text(f"http:\n  server_port: {port}\n")
         with pytest.raises(ValueError, match=f"Port {port} is in use"):
             dev.check_port(Path(sys.executable), tmp_path)
+
+
+@pytest.mark.enable_socket
+def test_recently_stopped_instance_port_can_be_reused(tmp_path: Path) -> None:
+    """Allow restart after server-side close leaves connections in TIME_WAIT."""
+    with socket.socket() as server:
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind(("127.0.0.1", 0))
+        server.listen()
+        port = server.getsockname()[1]
+        with socket.create_connection(("127.0.0.1", port)) as client:
+            connection, _address = server.accept()
+            connection.close()
+            assert client.recv(1) == b""
+    (tmp_path / "configuration.yaml").write_text(f"http:\n  server_port: {port}\n")
+    assert dev.check_port(Path(sys.executable), tmp_path) == port
