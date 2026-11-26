@@ -287,7 +287,7 @@ async def test_gateway_totals_and_last_frame_timestamps(
     api = apis[-1]
     monitor = entry.runtime_data.traffic
     gateway_device = dr.async_get(hass).async_get_device_by_identifier(
-        ("ampio", entry.unique_id), entry.entry_id
+        ("ampio", entry.entry_id), entry.entry_id
     )
     assert registry.async_get(gateway["rx_total"]).device_id == gateway_device.id
     stamp = datetime(2026, 11, 26, 10, 20, 30, tzinfo=UTC)

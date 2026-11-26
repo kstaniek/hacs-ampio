@@ -24,8 +24,10 @@ if TYPE_CHECKING:
     from decimal import Decimal
 
     from aioampio.controllers.sensor import SensorsController
+    from aioampio.controllers.texts import TextsController
     from aioampio.models.device import Device
     from aioampio.models.sensor import Sensor
+    from aioampio.models.text import Text
     from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
     from homeassistant.helpers.typing import StateType
 
@@ -52,6 +54,16 @@ async def async_setup_entry(
     async_add_entities(make_sensor_entity(sensor) for sensor in controller)
     config_entry.async_on_unload(
         controller.subscribe(async_add_sensor, event_filter=EventType.RESOURCE_ADDED)
+    )
+
+    @callback
+    def async_add_text(event_type: EventType, resource: Text) -> None:
+        """Expose status messages without editable text controls."""
+        async_add_entities([AmpioTextSensor(bridge, api.texts, resource)])
+
+    async_add_entities(AmpioTextSensor(bridge, api.texts, text) for text in api.texts)
+    config_entry.async_on_unload(
+        api.texts.subscribe(async_add_text, event_filter=EventType.RESOURCE_ADDED)
     )
     if bridge.traffic is not None:
         async_add_entities(
@@ -96,7 +108,7 @@ class AmpioTrafficSensor(SensorEntity):
             device.id if device is not None else traffic.bridge.config_entry.entry_id
         )
         identifier = (
-            device.id if device is not None else traffic.bridge.config_entry.unique_id
+            device.id if device is not None else traffic.bridge.config_entry.entry_id
         )
         self._attr_unique_id = f"{owner_id}_{counter}"
         self._attr_translation_key = counter
@@ -146,4 +158,24 @@ class AmpioSensor(AmpioBaseEntity, SensorEntity):
     @property
     def native_value(self) -> StateType | date | datetime | Decimal:
         """Return the value reported by the sensor."""
+        return self.resource.state
+
+
+class AmpioTextSensor(AmpioBaseEntity, SensorEntity):
+    """Represent a read-only Ampio status message."""
+
+    entity_description = SensorEntityDescription(
+        key="ampio_status", has_entity_name=False
+    )
+
+    def __init__(
+        self, bridge: AmpioBridge, controller: TextsController, resource: Text
+    ) -> None:
+        """Initialize the status sensor."""
+        super().__init__(bridge, controller, resource)
+        self.name = resource.name
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the latest reported message."""
         return self.resource.state

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from aioampio.controllers.events import EventType
 from homeassistant.core import callback
-from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN
@@ -26,7 +25,6 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
     entry = bridge.config_entry
     hass = bridge.hass
     dev_reg = dr.async_get(hass)
-    ar_reg = ar.async_get(hass)
     dev_controller = bridge.api.devices
 
     @callback
@@ -41,22 +39,13 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
             "sw_version": str(ampio_resource.sw_version),
             "hw_version": str(ampio_resource.pcb),
             "serial_number": f"{ampio_resource.can_id:08X}",
+            "suggested_area": ampio_resource.area,
         }
 
-        device = dev_reg.async_get_or_create(
+        return dev_reg.async_get_or_create(
             config_entry_id=entry.entry_id,
             **params,
         )
-
-        area = (
-            ar_reg.async_get_area_by_name(ampio_resource.area)
-            if ampio_resource.area
-            else None
-        )
-        if area:
-            device = dev_reg.async_update_device(device.id, area_id=area.id)
-
-        return device
 
     @callback
     def remove_device(ampio_resource_id: str) -> None:
@@ -80,7 +69,7 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
     for device in dr.async_entries_for_config_entry(dev_reg, entry.entry_id):
         if (
             device.id not in known_device_ids
-            and (DOMAIN, entry.unique_id) not in device.identifiers
+            and (DOMAIN, entry.entry_id) not in device.identifiers
         ):
             dev_reg.async_remove_device(device.id)
 

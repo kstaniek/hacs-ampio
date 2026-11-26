@@ -96,8 +96,8 @@ class AmpioAlarm(AmpioBaseEntity, AlarmControlPanelEntity):
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command."""
-        await self.controller.disarm(self.resource.id, code)
+        await self.async_command(self.controller.disarm(self.resource.id, code))
 
     async def async_alarm_arm_away(self, code: str | None = None) -> None:
         """Send arm away command."""
-        await self.controller.arm_in_mode0(self.resource.id, code)
+        await self.async_command(self.controller.arm_in_mode0(self.resource.id, code))

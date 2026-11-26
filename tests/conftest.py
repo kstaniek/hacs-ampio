@@ -84,7 +84,13 @@ def skip_dependency_install() -> Iterator[None]:
 
 
 @pytest.fixture
-def apis() -> Iterator[list[AmpioBridge]]:
+def runtime_connection() -> AsyncMock:
+    """Control setup's gateway-connectivity result separately from config flows."""
+    return AsyncMock(return_value=True)
+
+
+@pytest.fixture
+def apis(runtime_connection: AsyncMock) -> Iterator[list[AmpioBridge]]:
     """Load actual resources and encoders; replace only connection and CAN writes."""
     instances = []
 
@@ -96,6 +102,7 @@ def apis() -> Iterator[list[AmpioBridge]]:
     ) -> AmpioBridge:
         api = AmpioBridge(cfg, interface=interface, channel=channel, **kwargs)
         api.start = AsyncMock()
+        api.wait_connected = runtime_connection
         if hasattr(api, "module_metrics"):
 
             async def start() -> None:

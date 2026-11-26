@@ -39,7 +39,39 @@ check that the CAN gateway can connect. These checks send no device commands.
 If validation or connection fails, the form reports the problem and keeps the
 existing configuration and connection unchanged. Correct the input and retry.
 
+The optional **Gateway MAC address** field accepts the Ethernet MAC shown on the
+gateway's label or configuration page. Home Assistant can use a known MAC from
+DHCP discovery to update the gateway address automatically. The integration also
+accepts a MAC advertised by the gateway's CAN-server mDNS service. It does not
+perform ARP lookups. If no MAC is available, leave this field blank and use
+**Reconfigure** when the address changes. Existing gateway, module, and functional
+entity registry IDs are retained across endpoint changes. Separate CAN ports on
+the same gateway can have separate integration entries.
+
+After startup, temporary gateway connection failures are retried automatically.
+Invalid cached configuration requires correction through **Reconfigure**. If an
+older entry has lost its bundled YAML, Home Assistant shows a Repairs issue;
+provide a valid configuration URL to recover the existing entry.
+
 ## Entity feedback and controls
+
+### Upgrading to 0.4.0
+
+Read-only text status resources move from `text.<name>` to `sensor.<name>`.
+Their names, icons, areas, aliases, labels, and disabled/hidden settings are
+preserved. Home Assistant cannot keep the same entity ID when its domain
+changes. A Repairs issue lists each old and new ID; update affected automations,
+scripts, and dashboard cards, then dismiss the issue. The sensor has no edit
+control because `aioampio` does not support writing these values.
+
+Area assignments from the Ampio configuration are suggestions for new devices.
+Reloading leaves user-selected device/entity areas and existing floor/area
+metadata unchanged, including areas the user has deliberately cleared.
+
+`aioampio==2.0.2` raises a transport error when a CAN write fails or
+the gateway is disconnected. The adapter translates these errors into a Home
+Assistant action error and stops multi-frame commands at the failed frame.
+Successful submission still does not confirm receipt by a module.
 
 ### Upgrading to 0.3.0
 
@@ -77,7 +109,7 @@ The bridge manufacturer is Waveshare; the attached CAN modules remain Ampio.
 Integration entries use the same descriptive connection summary. Existing
 endpoint-only titles are updated on setup; user-defined titles are preserved.
 
-This release uses `aioampio==2.0.1`. The library remains independent of Home
+This release uses `aioampio==2.0.2`. The library remains independent of Home
 Assistant; this integration owns diagnostic entities and availability policy.
 
 With the new API, the CAN Bridge device has global **RX frames**, **TX frames**,

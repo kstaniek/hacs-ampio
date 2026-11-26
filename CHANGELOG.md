@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.0
+
+### Breaking changes
+
+- Expose read-only text status as sensors. Preserve registry preferences and
+  create Repairs issues listing the old `text.*` and new `sensor.*` IDs. Update
+  automations, scripts, and dashboards that reference the old IDs.
+
+### Fixes
+
+- Retry temporary gateway setup failures, wait for connection before loading
+  platforms, and stop the transport on setup failures and Home Assistant shutdown.
+- Translate transport failures into actionable Home Assistant service errors.
+  Require aioampio 2.0.2 so rejected writes propagate instead of appearing successful.
+- Suggest areas for new devices without overwriting user assignments or existing
+  floor and area metadata during reload.
+- Give gateway devices stable identifiers independent of the network endpoint.
+  Add an optional gateway MAC and use DHCP/mDNS discovery to update known addresses.
+- Recover legacy entries with missing or invalid bundled YAML through Reconfigure,
+  with a Repairs issue explaining how to provide a configuration URL.
+
 ## 0.3.0
 
 ### Breaking changes

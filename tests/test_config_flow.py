@@ -22,6 +22,7 @@ from .test_integration import make_entry, setup_entry
 INPUT = {
     "host": "192.0.2.1",
     "port": 20001,
+    "gateway_mac": "",
     "config_url": "https://example.invalid/config.yaml",
 }
 
@@ -65,7 +66,7 @@ async def test_manual_setup(
         await hass.async_block_till_done()
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["data"] == {**INPUT, "ampio_config": CONFIG}
-    assert result["result"].unique_id == "192.0.2.1:20001"
+    assert result["result"].unique_id is None
     assert result["result"].title == "CAN Bridge (waveshare / can0, 192.0.2.1:20001)"
 
 
@@ -149,7 +150,7 @@ async def test_discovery_confirmation(
         )
         await hass.async_block_till_done()
     assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert result["result"].unique_id == "192.0.2.1:20001"
+    assert result["result"].unique_id is None
 
 
 @pytest.mark.parametrize(
@@ -222,7 +223,7 @@ async def test_reconfigure_preserves_bridge_device(
     entry = await setup_entry(hass, title=title)
     registry = dr.async_get(hass)
     before = registry.async_get_device_by_identifier(
-        ("ampio", entry.unique_id), entry.entry_id
+        ("ampio", entry.entry_id), entry.entry_id
     )
     assert before is not None
     aioclient_mock.get(INPUT["config_url"], text=yaml.safe_dump(CONFIG))
@@ -233,11 +234,11 @@ async def test_reconfigure_preserves_bridge_device(
     )
     await hass.async_block_till_done()
     assert result["reason"] == "reconfigure_successful"
-    assert entry.unique_id == "192.0.2.2:20001"
+    assert entry.unique_id is None
     assert entry.title == expected_title
     assert entry.data["host"] == "192.0.2.2"
     after = registry.async_get_device_by_identifier(
-        ("ampio", entry.unique_id), entry.entry_id
+        ("ampio", entry.entry_id), entry.entry_id
     )
     assert after.id == before.id
     assert len(apis) == 2
@@ -296,7 +297,7 @@ async def test_invalid_ampio_config_keeps_form_recoverable(
         )
         await hass.async_block_till_done()
     assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert result["result"].unique_id == "192.0.2.1:20001"
+    assert result["result"].unique_id is None
     config_apis[1].start.assert_awaited_once()
     config_apis[1].stop.assert_awaited_once()
     config_apis[1].send.assert_not_awaited()
@@ -338,7 +339,7 @@ async def test_gateway_validation_error_and_recovery(  # noqa: PLR0913
         )
         await hass.async_block_till_done()
     assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert result["result"].unique_id == "192.0.2.1:20001"
+    assert result["result"].unique_id is None
     config_apis[1].stop.assert_awaited_once()
     config_apis[1].send.assert_not_awaited()
 
@@ -353,7 +354,7 @@ async def test_invalid_reconfiguration_preserves_running_entry(
     previous_data = dict(entry.data)
     registry = dr.async_get(hass)
     gateway = registry.async_get_device_by_identifier(
-        ("ampio", entry.unique_id), entry.entry_id
+        ("ampio", entry.entry_id), entry.entry_id
     )
     aioclient_mock.get(INPUT["config_url"], text="devices: not-a-list")
     result = await entry.start_reconfigure_flow(hass)
@@ -364,8 +365,8 @@ async def test_invalid_reconfiguration_preserves_running_entry(
     assert result["type"] == FlowResultType.FORM
     assert result["errors"] == {"config_url": "invalid_config"}
     assert dict(entry.data) == previous_data
-    assert entry.unique_id == "192.0.2.1:20001"
-    assert registry.async_get(gateway.id).identifiers == {("ampio", entry.unique_id)}
+    assert entry.unique_id is None
+    assert registry.async_get(gateway.id).identifiers == {("ampio", entry.entry_id)}
     apis[0].stop.assert_not_awaited()
     assert len(apis) == 1
 
