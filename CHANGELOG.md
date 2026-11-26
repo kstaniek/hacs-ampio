@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.1
 
 - Derive native group light names and initial entity IDs from the YAML `name`
   field. Preserve existing registry IDs and user names, and let HA allocate a
