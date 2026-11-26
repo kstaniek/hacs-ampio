@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from functools import partial
+from time import monotonic
 from typing import TYPE_CHECKING, Any, cast
 
 from aioampio.controllers.events import EventType
@@ -26,6 +28,8 @@ if TYPE_CHECKING:
     from .bridge import AmpioBridge, AmpioConfigEntry
 
 ENTITY_FORMAT = f"{Platform.LIGHT}.ampio_{{}}"
+# Allow for periodic RGBW feedback, without hiding external changes indefinitely.
+RGBW_FEEDBACK_TIMEOUT = 30
 
 
 async def async_setup_entry(
@@ -80,6 +84,9 @@ class AmpioLight(AmpioBaseEntity, LightEntity):
             self._fixed_color_mode = next(iter(self._attr_supported_color_modes))
         self._last_brightness: int | None = None
         self._last_rgbw_color: tuple[int, int, int, int] | None = None
+        self._rgbw_command_lock = asyncio.Lock()
+        self._rgbw_target: tuple[int, int, int, int] | None = None
+        self._rgbw_target_deadline = 0.0
         self.on_update()
 
         self.name = resource.name
@@ -127,14 +134,43 @@ class AmpioLight(AmpioBaseEntity, LightEntity):
 
     @callback
     def on_update(self) -> None:
-        """Remember the last nonzero RGBW state for an off/on cycle."""
-        if (
-            self.resource.supports_color
-            and (levels := self._rgbw_levels())
-            and any(levels)
-        ):
+        """Remember complete RGBW feedback, excluding partial command results."""
+        if not self.resource.supports_color or (levels := self._rgbw_levels()) is None:
+            return
+        if self._rgbw_command_pending():
+            if levels != self._rgbw_target:
+                return
+            self._rgbw_target = None
+        self._remember_rgbw(levels)
+
+    def _rgbw_command_pending(self) -> bool:
+        """Wait for the commanded channels, with a bound for missing feedback."""
+        if monotonic() >= self._rgbw_target_deadline:
+            self._rgbw_target = None
+        return self._rgbw_target is not None
+
+    def _remember_rgbw(self, levels: tuple[int, int, int, int]) -> None:
+        """Keep a nonzero color and brightness for subsequent on commands."""
+        if any(levels):
             self._last_brightness = max(levels)
-            self._last_rgbw_color = self.rgbw_color
+            self._last_rgbw_color = cast(
+                "tuple[int, int, int, int]", color_util.match_max_scale((255,), levels)
+            )
+
+    async def _async_set_rgbw(self, levels: tuple[int, int, int, int]) -> None:
+        """Send channels under the command lock and retain the requested color."""
+        previous = self._last_brightness, self._last_rgbw_color
+        self._rgbw_target = levels
+        self._rgbw_target_deadline = monotonic() + RGBW_FEEDBACK_TIMEOUT
+        self._remember_rgbw(levels)
+        try:
+            await self.controller.set_state(
+                id=self.resource.id, on=any(levels), color=levels
+            )
+        except (Exception, asyncio.CancelledError):
+            self._rgbw_target = None
+            self._last_brightness, self._last_rgbw_color = previous
+            raise
 
     @property
     def color_mode(self) -> ColorMode:
@@ -145,15 +181,24 @@ class AmpioLight(AmpioBaseEntity, LightEntity):
         """Turn the light on."""
         brightness = kwargs.get("brightness")
         if self.resource.supports_color:
-            color = kwargs.get("rgbw_color")
-            if color is None:
-                color = self.rgbw_color
-                if color is None or not any(color):
-                    color = self._last_rgbw_color or (255, 255, 255, 255)
-            if brightness is None:
-                brightness = self.brightness or self._last_brightness or 255
-            levels = tuple(round(value * brightness / 255) for value in color)
-            await self.controller.set_state(id=self.resource.id, on=True, color=levels)
+            async with self._rgbw_command_lock:
+                pending = self._rgbw_command_pending()
+                color = kwargs.get("rgbw_color")
+                if color is None:
+                    color = self._last_rgbw_color if pending else self.rgbw_color
+                    if color is None or not any(color):
+                        color = self._last_rgbw_color or (255, 255, 255, 255)
+                if brightness is None:
+                    brightness = (
+                        (self._last_brightness if pending else self.brightness)
+                        or self._last_brightness
+                        or 255
+                    )
+                levels = cast(
+                    "tuple[int, int, int, int]",
+                    tuple(round(value * brightness / 255) for value in color),
+                )
+                await self._async_set_rgbw(levels)
             return
 
         if self.resource.dimming and self._last_brightness and brightness is None:
@@ -169,8 +214,11 @@ class AmpioLight(AmpioBaseEntity, LightEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the light off."""
         if self.resource.supports_color:
-            self.on_update()
-        elif self.resource.dimming:
+            async with self._rgbw_command_lock:
+                self.on_update()
+                await self._async_set_rgbw((0, 0, 0, 0))
+            return
+        if self.resource.dimming:
             self._last_brightness = self.resource.state.get("brightness")
 
         await self.controller.set_state(
