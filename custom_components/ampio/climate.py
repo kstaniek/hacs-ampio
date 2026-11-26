@@ -11,7 +11,7 @@ from homeassistant.components.climate import (
     ClimateEntityDescription,
     ClimateEntityFeature,
 )
-from homeassistant.components.climate.const import HVACMode
+from homeassistant.components.climate.const import HVACAction, HVACMode
 from homeassistant.core import HomeAssistant, callback
 
 from .entity import AmpioBaseEntity
@@ -53,9 +53,8 @@ class AmpioClimate(AmpioBaseEntity, ClimateEntity):
         key="ampio_climate",
         has_entity_name=False,
     )
-    _attr_temperature_unit = "°C"
-    _attr_hvac_modes = (HVACMode.OFF, HVACMode.AUTO, HVACMode.HEAT)
-    _attr_hvac_mode = HVACMode.HEAT
+    _attr_native_temperature_unit = "°C"
+    _attr_supported_features = ClimateEntityFeature(0)
 
     def __init__(
         self, bridge: AmpioBridge, controller: ClimatesController, resource: Climate
@@ -63,27 +62,30 @@ class AmpioClimate(AmpioBaseEntity, ClimateEntity):
         """Initialize Ampio Climate."""
         super().__init__(bridge, controller, resource)
         self.name = resource.name
-        self._attr_supported_features = (
-            ClimateEntityFeature.TARGET_TEMPERATURE
-            | ClimateEntityFeature.TURN_ON
-            | ClimateEntityFeature.TURN_OFF
-        )
+        self._attr_hvac_modes = []
 
     @property
-    def state(self) -> str | None:
-        """Return the current state."""
+    def hvac_mode(self) -> HVACMode | None:
+        """Report an enabled zone independently of its current heating activity."""
+        if self.resource.state is None:
+            return None
+        return HVACMode.HEAT if self.resource.state else HVACMode.OFF
+
+    @property
+    def hvac_action(self) -> HVACAction | None:
+        """Return heating activity without inferring that an idle zone is off."""
+        if self.resource.state is False:
+            return HVACAction.OFF
         if self.resource.heating is None:
             return None
-        if self.resource.heating:
-            return HVACMode.HEAT
-        return HVACMode.OFF
+        return HVACAction.HEATING if self.resource.heating else HVACAction.IDLE
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self.resource.current_temperature
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self.resource.target_temperature

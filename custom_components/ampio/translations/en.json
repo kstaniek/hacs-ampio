@@ -1,0 +1,134 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Connect to Ampio",
+        "description": "Enter host, port and a configuration URL (YAML).",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Config URL",
+          "gateway_mac": "Gateway MAC address (optional)"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the Ampio CAN Bridge",
+          "port": "Port number (default: 20001)",
+          "config_url": "URL to YAML configuration file (http(s)://...)",
+          "gateway_mac": "MAC from the gateway label or configuration. Allows HA discovery to recognize address changes."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Ampio",
+        "description": "Update host, port or configuration URL.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Config URL",
+          "gateway_mac": "Gateway MAC address (optional)"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the Ampio CAN Bridge",
+          "port": "Port number (default: 20001)",
+          "config_url": "URL to YAML configuration file (http(s)://...)",
+          "gateway_mac": "MAC from the gateway label or configuration. Allows HA discovery to recognize address changes."
+        }
+      },
+      "discovery_confirm": {
+        "description": "Connect to {name}. Confirm the endpoint and provide its YAML configuration URL.",
+        "title": "Discovered Ampio CAN Bridge",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Config URL",
+          "gateway_mac": "Gateway MAC address (optional)"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the Ampio CAN Bridge",
+          "port": "Port number (default: 20001)",
+          "config_url": "URL to YAML configuration file (http(s)://...)",
+          "gateway_mac": "MAC from the gateway label or configuration. Allows HA discovery to recognize address changes."
+        }
+      }
+    },
+    "abort": {
+      "reconfigure_successful": "Configuration was updated.",
+      "missing_entry": "Cannot find the entry to reconfigure.",
+      "already_configured": "This Ampio endpoint is already configured.",
+      "not_can_bridge": "The discovered service is not an Ampio CAN bridge.",
+      "invalid_discovery": "The discovered bridge has an invalid address or port."
+    },
+    "error": {
+      "invalid_url": "URL must be http(s).",
+      "cannot_connect": "Cannot connect to the configuration server or CAN gateway.",
+      "timeout": "Timed out while downloading the file.",
+      "invalid_yaml": "The file must contain a YAML configuration mapping.",
+      "invalid_host": "Enter an IP address or hostname.",
+      "invalid_config": "The file does not contain a valid Ampio configuration.",
+      "unknown": "An unexpected error occurred.",
+      "invalid_mac": "Enter a valid MAC address or leave the field empty."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "rx_total": {
+        "name": "RX frames"
+      },
+      "tx_total": {
+        "name": "TX frames"
+      },
+      "reconnects": {
+        "name": "Reconnects"
+      },
+      "last_rx_at": {
+        "name": "Last frame received"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Module monitoring",
+        "description": "Silence makes module entities unavailable without reconnecting the gateway. Use 0 to disable a silence timeout. Optional overrides map hexadecimal CAN IDs to seconds, for example `00001879: 120`.",
+        "data": {
+          "module_timeout": "Module silence timeout",
+          "module_timeouts": "Per-module timeout overrides"
+        },
+        "data_description": {
+          "module_timeout": "Seconds since the last received frame; 0 disables the timeout.",
+          "module_timeouts": "Mapping of CAN IDs to timeouts in seconds. An empty mapping uses the global timeout."
+        }
+      }
+    },
+    "error": {
+      "invalid_module_timeout": "Use configured hexadecimal CAN IDs and timeouts from 0 to 86400 seconds."
+    },
+    "abort": {
+      "traffic_not_supported": "Module monitoring requires an aioampio version with per-module traffic metrics."
+    }
+  },
+  "exceptions": {
+    "command_failed": {
+      "message": "The command could not be sent. Check the CAN gateway connection."
+    },
+    "cannot_connect": {
+      "message": "Cannot connect to the CAN gateway. Home Assistant will retry."
+    },
+    "invalid_config": {
+      "message": "The Ampio configuration is invalid. Reconfigure the integration to correct it."
+    },
+    "configuration_required": {
+      "message": "No cached Ampio configuration is available. Open Reconfigure and provide its YAML URL."
+    }
+  },
+  "issues": {
+    "text_migrated": {
+      "title": "Status text moved to a sensor",
+      "description": "The read-only entity `{old_entity_id}` was replaced by `{new_entity_id}`. Update references in automations, scripts, and dashboards. Its name, icon, and area preferences were preserved."
+    },
+    "config_required": {
+      "title": "Ampio configuration required",
+      "description": "The legacy YAML file for {name} could not be recovered.\n\n1. Open Settings > Devices & services > Ampio.\n2. Select Reconfigure for this entry.\n3. Enter the HTTP(S) URL of your YAML configuration and submit it.\n\nAfter validation, the integration starts using the same configuration entry."
+    }
+  }
+}

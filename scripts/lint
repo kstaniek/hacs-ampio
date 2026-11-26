@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-cd "$(dirname "$0")/.."
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "$repo_dir"
+python="$repo_dir/.venv/bin/python"
+if [[ ! -x "$python" ]]; then
+    printf 'Run scripts/setup before scripts/lint.\n' >&2
+    exit 1
+fi
+unset PYTHONHOME PYTHONPATH
 
-ruff format .
-ruff check . --fix
+"$python" -m ruff format .
+"$python" -m ruff check . --fix
