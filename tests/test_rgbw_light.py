@@ -1,6 +1,8 @@
 """Translate HA RGBW services into captured Ampio channel commands."""
 
+import asyncio
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from aioampio import AmpioBridge
@@ -201,3 +203,149 @@ async def test_rgbw_feedback_without_binary_flags(
     await hass.async_block_till_done()
     assert hass.states.get(rgbw_light).state == "off"
     apis[0].send.assert_not_awaited()
+
+
+@pytest.mark.parametrize("acknowledge_off", [True, False])
+async def test_off_feedback_does_not_replace_saved_color(
+    hass: HomeAssistant,
+    apis: list[AmpioBridge],
+    rgbw_light: str,
+    *,
+    acknowledge_off: bool,
+) -> None:
+    """Ignore partial channel reports from the four-command off sequence."""
+    api = apis[0]
+    original = (128, 64, 32, 16)
+    await receive(hass, api, original)
+    await hass.services.async_call(
+        "light", "turn_off", {"entity_id": rgbw_light}, blocking=True
+    )
+    for levels in ((0, 64, 32, 16), (0, 0, 32, 16), (0, 0, 0, 16)):
+        await receive(hass, api, levels)
+    if acknowledge_off:
+        await receive(hass, api, (0, 0, 0, 0))
+    api.send.reset_mock()
+    await hass.services.async_call(
+        "light", "turn_on", {"entity_id": rgbw_light}, blocking=True
+    )
+    assert commands(api) == expected_commands(original)
+
+
+async def test_requested_color_survives_off_before_feedback(
+    hass: HomeAssistant, apis: list[AmpioBridge], rgbw_light: str
+) -> None:
+    """Remember a new requested color even when feedback has not arrived."""
+    api = apis[0]
+    await receive(hass, api, (128, 64, 32, 0))
+    await hass.services.async_call(
+        "light",
+        "turn_on",
+        {"entity_id": rgbw_light, "rgbw_color": (0, 0, 0, 255), "brightness": 32},
+        blocking=True,
+    )
+    await hass.services.async_call(
+        "light", "turn_off", {"entity_id": rgbw_light}, blocking=True
+    )
+    await receive(hass, api, (0, 0, 0, 0))
+    api.send.reset_mock()
+    await hass.services.async_call(
+        "light", "turn_on", {"entity_id": rgbw_light}, blocking=True
+    )
+    assert commands(api) == expected_commands((0, 0, 0, 32))
+
+
+async def test_overlapping_rgbw_commands_keep_channel_groups_together(
+    hass: HomeAssistant, apis: list[AmpioBridge], rgbw_light: str
+) -> None:
+    """Complete all four off commands before starting a queued on command."""
+    api = apis[0]
+    original = (128, 64, 32, 16)
+    await receive(hass, api, original)
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def delayed_send(*args: Any, **kwargs: Any) -> None:
+        if not entered.is_set():
+            entered.set()
+            await release.wait()
+        await asyncio.sleep(0)
+
+    api.send.side_effect = delayed_send
+    off = asyncio.create_task(
+        hass.services.async_call(
+            "light", "turn_off", {"entity_id": rgbw_light}, blocking=True
+        )
+    )
+    await asyncio.wait_for(entered.wait(), timeout=2)
+    on = asyncio.create_task(
+        hass.services.async_call(
+            "light", "turn_on", {"entity_id": rgbw_light}, blocking=True
+        )
+    )
+    try:
+        await asyncio.sleep(0)
+    finally:
+        release.set()
+        await asyncio.gather(off, on)
+    assert commands(api) == expected_commands((0, 0, 0, 0)) + expected_commands(
+        original
+    )
+
+
+@pytest.mark.parametrize("confirm_target", [True, False])
+async def test_external_color_after_confirmation_or_timeout(
+    hass: HomeAssistant,
+    apis: list[AmpioBridge],
+    rgbw_light: str,
+    *,
+    confirm_target: bool,
+) -> None:
+    """Resume learning external colors after confirmation or missing feedback."""
+    api = apis[0]
+    external = (0, 128, 64, 0)
+    with patch("custom_components.ampio.light.monotonic", return_value=100) as clock:
+        await receive(hass, api, (128, 64, 32, 16))
+        await hass.services.async_call(
+            "light",
+            "turn_on",
+            {"entity_id": rgbw_light, "rgbw_color": (255, 0, 0, 0), "brightness": 64},
+            blocking=True,
+        )
+        if confirm_target:
+            await receive(hass, api, (64, 0, 0, 0))
+        else:
+            clock.return_value = 131
+        await receive(hass, api, external)
+        await hass.services.async_call(
+            "light", "turn_off", {"entity_id": rgbw_light}, blocking=True
+        )
+        await receive(hass, api, (0, 0, 0, 0))
+        api.send.reset_mock()
+        await hass.services.async_call(
+            "light", "turn_on", {"entity_id": rgbw_light}, blocking=True
+        )
+        assert commands(api) == expected_commands(external)
+
+
+async def test_failed_command_does_not_replace_saved_color(
+    hass: HomeAssistant, apis: list[AmpioBridge], rgbw_light: str
+) -> None:
+    """Release the command lock and discard a color that could not be sent."""
+    api = apis[0]
+    original = (128, 64, 32, 16)
+    await receive(hass, api, original)
+    api.send.side_effect = ConnectionError("test send failure")
+    with pytest.raises(ConnectionError, match="test send failure"):
+        await hass.services.async_call(
+            "light",
+            "turn_on",
+            {"entity_id": rgbw_light, "rgbw_color": (0, 0, 0, 255), "brightness": 32},
+            blocking=True,
+        )
+    api.send.side_effect = None
+    await receive(hass, api, (0, 0, 0, 0))
+    api.send.reset_mock()
+    await hass.services.async_call(
+        "light", "turn_on", {"entity_id": rgbw_light}, blocking=True
+    )
+    assert commands(api) == expected_commands(original)
