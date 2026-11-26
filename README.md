@@ -75,6 +75,14 @@ light_groups:
 Member IDs refer to existing lights on that device. The library derives mask
 `0xFC00` and sends exactly one frame for group on, off, or brightness. There is
 no batching delay. Group brightness commands apply a common level to all members.
+
+The group's YAML `name` supplies its entity name and initial entity ID:
+`name: MLED Sofa` suggests `light.mled_sofa`, and `MLED Duża łazienka` suggests
+`light.mled_duza_lazienka`. If an existing helper already owns the ID, HA adds a
+suffix such as `_2`. Existing registered IDs and user-selected names are
+preserved across reloads and YAML name changes. Replacing a helper while
+reusing its ID requires an explicit migration after verifying the native group.
+
 Plain on restores the last successfully submitted nonzero group brightness,
 defaulting to 255 after startup. Off retains that remembered group level.
 

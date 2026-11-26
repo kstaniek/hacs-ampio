@@ -26,10 +26,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.fixture
-async def group_entry(hass: HomeAssistant, apis: list[AmpioBridge]) -> MockConfigEntry:
-    """Set up 16 real members and three groups with all physical I/O mocked."""
-    entry = MockConfigEntry(
+def make_group_entry() -> MockConfigEntry:
+    """Provide ordinary lights and overlapping groups in a cached configuration."""
+    return MockConfigEntry(
         domain="ampio",
         version=2,
         unique_id="192.0.2.1:20001",
@@ -74,6 +73,12 @@ async def group_entry(hass: HomeAssistant, apis: list[AmpioBridge]) -> MockConfi
             },
         },
     )
+
+
+@pytest.fixture
+async def group_entry(hass: HomeAssistant, apis: list[AmpioBridge]) -> MockConfigEntry:
+    """Set up 16 real members and three groups with all physical I/O mocked."""
+    entry = make_group_entry()
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -118,6 +123,12 @@ async def test_setup_retains_members(
     assert state.state == "unknown"
     assert state.attributes["supported_color_modes"] == ["brightness"]
     assert "entity_id" not in state.attributes
+    assert group.entity_id == "light.mled_sofa"
+    assert group.original_name == "MLED Sofa"
+    assert (
+        registry.async_get(entity_id(hass, "light", "light_group_kitchen")).entity_id
+        == "light.mled_kitchen"
+    )
 
 
 @pytest.mark.parametrize(
@@ -327,7 +338,85 @@ async def test_reload_preserves_group_registry_and_area_preferences(
     await hass.async_block_till_done()
     reloaded = registry.async_get(sofa)
     assert reloaded.id == original.id
+    assert reloaded.original_name == "Renamed sofa"
     assert reloaded.area_id == (area.id if area else None)
     assert entity_id(hass, "light", "light_group_sofa") == sofa
     await service(hass, "turn_on")
     assert payloads(apis[1]) == ["0000012314ff0084"]
+
+
+async def test_group_name_collision_preserves_existing_helper(
+    hass: HomeAssistant, apis: list[AmpioBridge]
+) -> None:
+    """Suggest the YAML name without claiming an existing helper's entity ID."""
+    registry = er.async_get(hass)
+    helper = registry.async_get_or_create(
+        "light", "group", "existing-sofa-helper", suggested_object_id="mled_sofa"
+    )
+    hass.states.async_set(helper.entity_id, "off", {"friendly_name": "MLED Sofa"})
+    entry = make_group_entry()
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    sofa = entity_id(hass, "light", "light_group_sofa")
+    assert sofa == "light.mled_sofa_2"
+    assert registry.async_get(helper.entity_id) == helper
+    assert hass.states.get(helper.entity_id).attributes["friendly_name"] == "MLED Sofa"
+    apis[0].send.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("name", "expected_id"),
+    [
+        ("MLED Duża łazienka", "light.mled_duza_lazienka"),
+        ("", "light.00000123_light_group_sofa"),
+    ],
+)
+async def test_group_yaml_name_generates_valid_entity_id(
+    hass: HomeAssistant,
+    apis: list[AmpioBridge],
+    name: str,
+    expected_id: str,
+) -> None:
+    """Slugify Polish names and retain a valid fallback for a missing name."""
+    entry = make_group_entry()
+    entry.data["ampio_config"]["devices"][0]["light_groups"][1]["name"] = name
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entity_id(hass, "light", "light_group_sofa") == expected_id
+    assert er.async_get(hass).async_get(expected_id).original_name == name
+    apis[0].send.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("registered_id", "user_name"),
+    [
+        ("light.my_sofa", "Custom sofa name"),
+        ("light.server_room_module_2", None),
+    ],
+)
+async def test_existing_group_entity_id_and_user_name_are_preserved(
+    hass: HomeAssistant,
+    apis: list[AmpioBridge],
+    group_entry: MockConfigEntry,
+    registered_id: str,
+    user_name: str | None,
+) -> None:
+    """Reloading updates YAML's default name without replacing registry overrides."""
+    registry = er.async_get(hass)
+    sofa = entity_id(hass, "light", "light_group_sofa")
+    old = registry.async_get(sofa)
+    registry.async_update_entity(sofa, new_entity_id=registered_id, name=user_name)
+    await hass.async_block_till_done()
+    group_entry.data["ampio_config"]["devices"][0]["light_groups"][1]["name"] = (
+        "Different YAML name"
+    )
+    assert await hass.config_entries.async_reload(group_entry.entry_id)
+    await hass.async_block_till_done()
+    entry = registry.async_get(registered_id)
+    assert entry.id == old.id
+    assert entry.unique_id == old.unique_id
+    assert entry.name == user_name
+    assert entry.original_name == "Different YAML name"
+    assert entity_id(hass, "light", "light_group_sofa") == registered_id

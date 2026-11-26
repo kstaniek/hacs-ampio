@@ -18,6 +18,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import color as color_util
+from homeassistant.util import slugify
 
 from .const import DOMAIN
 from .entity import AmpioBaseEntity
@@ -251,6 +252,10 @@ class AmpioMaskedLightGroup(AmpioLight):
     ) -> None:
         """Keep command intent separate from aggregated received brightness."""
         super().__init__(bridge, controller, resource)
+        self._attr_name = resource.name
+        self.entity_id = (
+            f"{Platform.LIGHT}.{slugify(resource.name) or slugify(resource.id)}"
+        )
         self._group_brightness = 255
         self._group_command_lock = asyncio.Lock()
         self._suggest_area = (
