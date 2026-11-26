@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-MANIFEST_FILE = Path.cwd() / "custom_components" / "hacs" / "manifest.json"
+MANIFEST_FILE = Path.cwd() / "custom_components" / "ampio" / "manifest.json"
 
 
 def update_manifest() -> None:

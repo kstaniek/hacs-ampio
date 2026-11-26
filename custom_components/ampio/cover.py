@@ -7,14 +7,13 @@ from typing import TYPE_CHECKING, Any
 
 from aioampio.controllers.events import EventType
 from homeassistant.components.cover import (
-    ATTR_CURRENT_POSITION,
-    ATTR_CURRENT_TILT_POSITION,
     ATTR_POSITION,
     ATTR_TILT_POSITION,
     CoverEntity,
     CoverEntityDescription,
     CoverEntityFeature,
 )
+from homeassistant.const import STATE_CLOSED, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant, callback
 
 from .entity import AmpioBaseEntity
@@ -71,60 +70,83 @@ class AmpioCover(AmpioBaseEntity, CoverEntity):
             | CoverEntityFeature.STOP
             | CoverEntityFeature.OPEN_TILT
             | CoverEntityFeature.CLOSE_TILT
+            | CoverEntityFeature.STOP_TILT
             | CoverEntityFeature.SET_TILT_POSITION
         )
 
     @property
-    def state(self) -> str:
-        """Return the state of the cover."""
-        return self.resource.state
+    def current_cover_position(self) -> int | None:
+        """Return the reported cover position."""
+        return (
+            self.resource.cover.position
+            if self.resource.state not in (None, STATE_UNKNOWN)
+            else None
+        )
 
     @property
-    def state_attributes(self) -> dict[str, Any]:
-        """Return the state attributes."""
-        data = {}
+    def current_cover_tilt_position(self) -> int | None:
+        """Return the reported tilt position."""
+        return (
+            self.resource.tilt.position
+            if self.resource.state not in (None, STATE_UNKNOWN)
+            else None
+        )
 
-        if (current := self.resource.cover.position) is not None:
-            data[ATTR_CURRENT_POSITION] = current
+    @property
+    def is_closed(self) -> bool | None:
+        """Return whether the reported cover state is closed."""
+        if self.resource.state in (None, STATE_UNKNOWN):
+            return None
+        return self.resource.state == STATE_CLOSED
 
-        if (current_tilt := self.resource.tilt.position) is not None:
-            data[ATTR_CURRENT_TILT_POSITION] = current_tilt
-        return data
+    @property
+    def is_opening(self) -> bool:
+        """Return whether the module reports opening motion."""
+        return self.resource.opening
+
+    @property
+    def is_closing(self) -> bool:
+        """Return whether the module reports closing motion."""
+        return self.resource.closing
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        await self.controller.open_cover(self.resource.id)
+        await self.async_command(self.controller.open_cover(self.resource.id))
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
-        await self.controller.close_cover(self.resource.id)
+        await self.async_command(self.controller.close_cover(self.resource.id))
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the cover."""
-        await self.controller.stop_cover(self.resource.id)
+        await self.async_command(self.controller.stop_cover(self.resource.id))
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Set the cover position."""
-        await self.controller.set_position(
-            self.resource.id,
-            position=kwargs.get(ATTR_POSITION),
+        await self.async_command(
+            self.controller.set_position(
+                self.resource.id,
+                position=kwargs.get(ATTR_POSITION),
+            )
         )
 
     async def async_open_cover_tilt(self, **kwargs: Any) -> None:
         """Open the cover tilt."""
-        await self.controller.open_tilt(self.resource.id)
+        await self.async_command(self.controller.open_tilt(self.resource.id))
 
     async def async_close_cover_tilt(self, **kwargs: Any) -> None:
         """Close the cover tilt."""
-        await self.controller.close_tilt(self.resource.id)
+        await self.async_command(self.controller.close_tilt(self.resource.id))
 
     async def async_stop_cover_tilt(self, **kwargs: Any) -> None:
         """Stop the cover tilt."""
-        await self.controller.stop_tilt(self.resource.id)
+        await self.async_command(self.controller.stop_tilt(self.resource.id))
 
     async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
         """Set the cover tilt position."""
-        await self.controller.set_position(
-            self.resource.id,
-            tilt_position=kwargs.get(ATTR_TILT_POSITION),
+        await self.async_command(
+            self.controller.set_position(
+                self.resource.id,
+                tilt_position=kwargs.get(ATTR_TILT_POSITION),
+            )
         )
