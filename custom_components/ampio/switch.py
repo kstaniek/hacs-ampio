@@ -67,8 +67,12 @@ class AmpioSwitch(AmpioBaseEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        await self.controller.set_state(id=self.resource.id, on=True)
+        await self.async_command(
+            self.controller.set_state(id=self.resource.id, on=True)
+        )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        await self.controller.set_state(id=self.resource.id, on=False)
+        await self.async_command(
+            self.controller.set_state(id=self.resource.id, on=False)
+        )

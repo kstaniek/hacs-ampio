@@ -166,8 +166,10 @@ class AmpioLight(AmpioBaseEntity, LightEntity):
         self._rgbw_target_deadline = monotonic() + RGBW_FEEDBACK_TIMEOUT
         self._remember_rgbw(levels)
         try:
-            await self.controller.set_state(
-                id=self.resource.id, on=any(levels), color=levels
+            await self.async_command(
+                self.controller.set_state(
+                    id=self.resource.id, on=any(levels), color=levels
+                )
             )
         except (Exception, asyncio.CancelledError):
             self._rgbw_target = None
@@ -207,10 +209,12 @@ class AmpioLight(AmpioBaseEntity, LightEntity):
             brightness = self._last_brightness
             self._last_brightness = None
 
-        await self.controller.set_state(
-            id=self.resource.id,
-            on=True,
-            brightness=brightness,
+        await self.async_command(
+            self.controller.set_state(
+                id=self.resource.id,
+                on=True,
+                brightness=brightness,
+            )
         )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
@@ -223,7 +227,9 @@ class AmpioLight(AmpioBaseEntity, LightEntity):
         if self.resource.dimming:
             self._last_brightness = self.resource.state.get("brightness")
 
-        await self.controller.set_state(
-            id=self.resource.id,
-            on=False,
+        await self.async_command(
+            self.controller.set_state(
+                id=self.resource.id,
+                on=False,
+            )
         )

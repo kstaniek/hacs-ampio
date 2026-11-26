@@ -8,14 +8,17 @@ from typing import TYPE_CHECKING
 
 import yaml
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.exceptions import ConfigEntryError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 
 from .bridge import PLATFORMS, AmpioBridge, AmpioConfigEntry
-from .config_flow import endpoint_id
+from .config_flow import endpoint_id, gateway_id
 from .const import (
     CONF_CONFIG,
     CONF_CONFIG_URL,
+    CONF_GATEWAY_MAC,
     CONFIG_VERSION,
     DEFAULT_PORT,
     DOMAIN,
@@ -43,22 +46,61 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: AmpioConfigEntry) -> bool:
     """Set up a bridge from config entry."""
+    if not isinstance(entry.data.get(CONF_CONFIG), dict):
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            f"config_required_{entry.entry_id}",
+            is_fixable=False,
+            severity=ir.IssueSeverity.ERROR,
+            translation_key="config_required",
+            translation_placeholders={"name": entry.title},
+        )
+        raise ConfigEntryError(
+            translation_domain=DOMAIN, translation_key="configuration_required"
+        )
     bridge = AmpioBridge(hass, entry)
     if entry.title in {entry.unique_id, f"{bridge.host}:{bridge.port}"}:
         hass.config_entries.async_update_entry(
             entry, title=bridge.connection_description
         )
-    if not await bridge.async_initialize_bridge():
-        return False
-
-    device_registry = dr.async_get(hass)
-    device_registry.async_get_or_create(
-        config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, entry.unique_id)},
-        manufacturer=bridge.manufacturer,
-        model=bridge.connection_description,
-        name="Ampio CAN Bridge",
-    )
+    try:
+        await bridge.async_initialize_bridge()
+        device_registry = dr.async_get(hass)
+        connections = (
+            {(dr.CONNECTION_NETWORK_MAC, entry.data[CONF_GATEWAY_MAC])}
+            if entry.data.get(CONF_GATEWAY_MAC)
+            else set()
+        )
+        gateway = device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, entry.entry_id)},
+            connections=connections,
+            manufacturer=bridge.manufacturer,
+            model=bridge.connection_description,
+            name="Ampio CAN Bridge",
+        )
+        # Older HA versions can share one device across gateway-port entries.
+        connections |= {
+            (dr.CONNECTION_NETWORK_MAC, other.data[CONF_GATEWAY_MAC])
+            for other in hass.config_entries.async_entries(DOMAIN)
+            if other.entry_id != entry.entry_id
+            and (DOMAIN, other.entry_id) in gateway.identifiers
+            and other.data.get(CONF_GATEWAY_MAC)
+        }
+        device_registry.async_update_device(
+            gateway.id,
+            new_connections={
+                connection
+                for connection in gateway.connections
+                if connection[0] != dr.CONNECTION_NETWORK_MAC
+            }
+            | connections,
+        )
+    except BaseException:
+        await bridge.async_reset()
+        raise
+    ir.async_delete_issue(hass, DOMAIN, f"config_required_{entry.entry_id}")
     return True
 
 
@@ -76,13 +118,13 @@ async def async_migrate_entry(  # noqa: PLR0911 - Preserve the entry on each fai
     hass: HomeAssistant,
     entry: AmpioConfigEntry,
 ) -> bool:
-    """Preserve version 1 bundled configuration when upgrading to cached config."""
+    """Retain legacy configuration and migrate address-based registry identifiers."""
     if entry.version > CONFIG_VERSION:
         LOGGER.error("Cannot migrate Ampio configuration from a newer version")
         return False
     if entry.version == CONFIG_VERSION:
         return True
-    if entry.version != 1:
+    if entry.version not in (1, 2):
         return False
     data = dict(entry.data)
     host = data.get(CONF_HOST)
@@ -93,11 +135,15 @@ async def async_migrate_entry(  # noqa: PLR0911 - Preserve the entry on each fai
     if not isinstance(host, str) or not host.strip() or not 1 <= port <= MAX_PORT:
         return False
     unique_id = endpoint_id(host, port)
-    existing = hass.config_entries.async_entry_for_domain_unique_id(DOMAIN, unique_id)
-    if existing is not None and existing.entry_id != entry.entry_id:
+    if any(
+        other.entry_id != entry.entry_id
+        and other.data.get(CONF_HOST) is not None
+        and endpoint_id(other.data[CONF_HOST], int(other.data[CONF_PORT])) == unique_id
+        for other in hass.config_entries.async_entries(DOMAIN)
+    ):
         LOGGER.error("Cannot migrate duplicate Ampio endpoint")
         return False
-    if CONF_CONFIG not in data:
+    if entry.version == 1 and CONF_CONFIG not in data:
 
         def load_bundled_config() -> dict:
             with (
@@ -106,16 +152,33 @@ async def async_migrate_entry(  # noqa: PLR0911 - Preserve the entry on each fai
                 return yaml.safe_load(stream)
 
         try:
-            data[CONF_CONFIG] = await hass.async_add_executor_job(load_bundled_config)
+            config = await hass.async_add_executor_job(load_bundled_config)
         except (OSError, yaml.YAMLError):
-            LOGGER.exception("Cannot read the legacy Ampio configuration")
-            return False
-    if not isinstance(data[CONF_CONFIG], dict):
-        return False
+            config = None
+        if isinstance(config, dict):
+            data[CONF_CONFIG] = config
+
+    # Registry identity is local to this entry, independently of network address.
+    registry = dr.async_get(hass)
+    if entry.unique_id is not None and (
+        gateway := registry.async_get_device_by_identifier(
+            (DOMAIN, entry.unique_id), entry.entry_id
+        )
+    ):
+        registry.async_update_device(
+            gateway.id,
+            new_identifiers=(gateway.identifiers - {(DOMAIN, entry.unique_id)})
+            | {(DOMAIN, entry.entry_id)},
+        )
     data[CONF_HOST] = host.strip()
     data[CONF_PORT] = port
     data.setdefault(CONF_CONFIG_URL, "")
+    data.setdefault(CONF_GATEWAY_MAC, "")
     hass.config_entries.async_update_entry(
-        entry, data=data, unique_id=unique_id, version=CONFIG_VERSION, minor_version=1
+        entry,
+        data=data,
+        unique_id=gateway_id(data[CONF_GATEWAY_MAC], port),
+        version=CONFIG_VERSION,
+        minor_version=1,
     )
     return True

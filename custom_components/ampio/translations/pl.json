@@ -7,12 +7,14 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "config_url": "Adres URL konfiguracji"
+          "config_url": "Adres URL konfiguracji",
+          "gateway_mac": "Adres MAC bramki (opcjonalnie)"
         },
         "data_description": {
           "host": "Adres IP lub nazwa hosta mostka Ampio CAN",
           "port": "Numer portu (domyślnie: 20001)",
-          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)"
+          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)",
+          "gateway_mac": "Adres MAC z etykiety lub konfiguracji bramki. Pozwala rozpoznać bramkę po zmianie adresu IP."
         }
       },
       "reconfigure": {
@@ -21,24 +23,28 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "config_url": "Adres URL konfiguracji"
+          "config_url": "Adres URL konfiguracji",
+          "gateway_mac": "Adres MAC bramki (opcjonalnie)"
         },
         "data_description": {
           "host": "Adres IP lub nazwa hosta mostka Ampio CAN",
           "port": "Numer portu (domyślnie: 20001)",
-          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)"
+          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)",
+          "gateway_mac": "Adres MAC z etykiety lub konfiguracji bramki. Pozwala rozpoznać bramkę po zmianie adresu IP."
         }
       },
       "discovery_confirm": {
         "data": {
           "host": "Host",
           "port": "Port",
-          "config_url": "Adres URL konfiguracji"
+          "config_url": "Adres URL konfiguracji",
+          "gateway_mac": "Adres MAC bramki (opcjonalnie)"
         },
         "data_description": {
           "host": "Adres IP lub nazwa hosta mostka Ampio CAN",
           "port": "Numer portu (domyślnie: 20001)",
-          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)"
+          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)",
+          "gateway_mac": "Adres MAC z etykiety lub konfiguracji bramki. Pozwala rozpoznać bramkę po zmianie adresu IP."
         },
         "title": "Wykryto mostek Ampio CAN",
         "description": "Połącz z {name}. Potwierdź adres i port oraz podaj adres URL konfiguracji YAML."
@@ -58,7 +64,8 @@
       "invalid_yaml": "Plik musi zawierać konfigurację YAML w postaci mapowania.",
       "invalid_host": "Podaj adres IP lub nazwę hosta.",
       "invalid_config": "Plik nie zawiera prawidłowej konfiguracji Ampio.",
-      "unknown": "Wystąpił nieoczekiwany błąd."
+      "unknown": "Wystąpił nieoczekiwany błąd.",
+      "invalid_mac": "Podaj prawidłowy adres MAC lub pozostaw pole puste."
     },
     "flow_title": "{name}"
   },
@@ -95,6 +102,30 @@
     },
     "abort": {
       "traffic_not_supported": "Monitorowanie wymaga wersji aioampio obsługującej statystyki modułów."
+    }
+  },
+  "exceptions": {
+    "command_failed": {
+      "message": "Nie udało się wysłać polecenia. Sprawdź połączenie bramki CAN."
+    },
+    "cannot_connect": {
+      "message": "Nie można połączyć się z bramką CAN. Home Assistant ponowi próbę."
+    },
+    "invalid_config": {
+      "message": "Konfiguracja Ampio jest nieprawidłowa. Popraw ją przez rekonfigurację integracji."
+    },
+    "configuration_required": {
+      "message": "Brak zapisanej konfiguracji Ampio. Otwórz rekonfigurację i podaj adres URL pliku YAML."
+    }
+  },
+  "issues": {
+    "text_migrated": {
+      "title": "Status tekstowy został przeniesiony do czujnika",
+      "description": "Encja `{old_entity_id}` była tylko do odczytu i została zastąpiona przez `{new_entity_id}`. Zaktualizuj odwołania w automatyzacjach, skryptach i pulpitach. Zachowano nazwę, ikonę i obszar encji."
+    },
+    "config_required": {
+      "title": "Wymagana konfiguracja Ampio",
+      "description": "Nie można odzyskać starego pliku YAML dla {name}.\n\n1. Otwórz Ustawienia > Urządzenia i usługi > Ampio.\n2. Wybierz Rekonfiguruj dla tej integracji.\n3. Podaj adres HTTP(S) swojego pliku YAML i zatwierdź.\n\nPo sprawdzeniu konfiguracji integracja uruchomi się z zachowaniem istniejącego wpisu konfiguracji."
     }
   }
 }

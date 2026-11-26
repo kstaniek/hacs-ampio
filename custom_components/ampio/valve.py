@@ -96,19 +96,21 @@ class AmpioValve(AmpioBaseEntity, ValveEntity):
 
     async def async_set_valve_position(self, position: int) -> None:
         """Move the valve to a specific position."""
-        await self.controller.set_position(
-            self.resource.id,
-            position=position,
+        await self.async_command(
+            self.controller.set_position(
+                self.resource.id,
+                position=position,
+            )
         )
 
     async def async_stop_valve(self) -> None:
         """Stop the valve."""
-        await self.controller.stop_valve(self.resource.id)
+        await self.async_command(self.controller.stop_valve(self.resource.id))
 
     async def async_open_valve(self) -> None:
         """Open the valve."""
-        await self.controller.open_valve(self.resource.id)
+        await self.async_command(self.controller.open_valve(self.resource.id))
 
     async def async_close_valve(self) -> None:
         """Close the valve."""
-        await self.controller.close_valve(self.resource.id)
+        await self.async_command(self.controller.close_valve(self.resource.id))

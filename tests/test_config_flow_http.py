@@ -56,7 +56,7 @@ async def test_manual_form_http(config_client: TestClient) -> None:
     assert result["type"] == "form"
     assert result["step_id"] == "user"
     fields = {field["name"]: field for field in result["data_schema"]}
-    assert set(fields) == {"host", "port", "config_url"}
+    assert set(fields) == {"host", "port", "config_url", "gateway_mac"}
     assert fields["host"]["type"] == "string"
     assert fields["port"]["default"] == 20001
 
@@ -156,4 +156,4 @@ async def test_reconfigure_refreshes_cached_yaml_http(
     assert result["reason"] == "reconfigure_successful"
     assert entry.data["ampio_config"] == CONFIG
     assert entry.data["host"] == "192.0.2.1"
-    assert entry.unique_id == "192.0.2.1:20001"
+    assert entry.unique_id is None

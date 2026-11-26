@@ -111,38 +111,42 @@ class AmpioCover(AmpioBaseEntity, CoverEntity):
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        await self.controller.open_cover(self.resource.id)
+        await self.async_command(self.controller.open_cover(self.resource.id))
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
-        await self.controller.close_cover(self.resource.id)
+        await self.async_command(self.controller.close_cover(self.resource.id))
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the cover."""
-        await self.controller.stop_cover(self.resource.id)
+        await self.async_command(self.controller.stop_cover(self.resource.id))
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Set the cover position."""
-        await self.controller.set_position(
-            self.resource.id,
-            position=kwargs.get(ATTR_POSITION),
+        await self.async_command(
+            self.controller.set_position(
+                self.resource.id,
+                position=kwargs.get(ATTR_POSITION),
+            )
         )
 
     async def async_open_cover_tilt(self, **kwargs: Any) -> None:
         """Open the cover tilt."""
-        await self.controller.open_tilt(self.resource.id)
+        await self.async_command(self.controller.open_tilt(self.resource.id))
 
     async def async_close_cover_tilt(self, **kwargs: Any) -> None:
         """Close the cover tilt."""
-        await self.controller.close_tilt(self.resource.id)
+        await self.async_command(self.controller.close_tilt(self.resource.id))
 
     async def async_stop_cover_tilt(self, **kwargs: Any) -> None:
         """Stop the cover tilt."""
-        await self.controller.stop_tilt(self.resource.id)
+        await self.async_command(self.controller.stop_tilt(self.resource.id))
 
     async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
         """Set the cover tilt position."""
-        await self.controller.set_position(
-            self.resource.id,
-            tilt_position=kwargs.get(ATTR_TILT_POSITION),
+        await self.async_command(
+            self.controller.set_position(
+                self.resource.id,
+                tilt_position=kwargs.get(ATTR_TILT_POSITION),
+            )
         )

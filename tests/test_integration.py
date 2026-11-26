@@ -73,7 +73,7 @@ async def test_setup(
     assert device.manufacturer == "Ampio"
     assert (
         dr.async_get(hass).async_get_device_by_identifier(
-            ("ampio", entry.unique_id), entry.entry_id
+            ("ampio", entry.entry_id), entry.entry_id
         )
         is not None
     )
@@ -82,7 +82,7 @@ async def test_setup(
         er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
     ) == (15 if hasattr(apis[0], "module_metrics") else 9)
     gateway = dr.async_get(hass).async_get_device_by_identifier(
-        ("ampio", entry.unique_id), entry.entry_id
+        ("ampio", entry.entry_id), entry.entry_id
     )
     assert gateway.model == "CAN Bridge (waveshare / can0, 192.0.2.1:20001)"
     assert gateway.manufacturer == "Waveshare"
@@ -118,7 +118,7 @@ async def test_states(hass: HomeAssistant, apis: list[AmpioBridge]) -> None:
         entity_id(hass, "sensor", "sensor1"): "21.5",
         entity_id(hass, "binary_sensor", "input1"): "on",
         entity_id(hass, "alarm_control_panel", "alarm1"): "armed_away",
-        entity_id(hass, "text", "text1"): "ready",
+        entity_id(hass, "sensor", "text1"): "ready",
     }
     for entity, state in expected.items():
         assert hass.states.get(entity).state == state
@@ -187,7 +187,7 @@ async def test_reload(hass: HomeAssistant, apis: list[AmpioBridge]) -> None:
     assert len(entry.update_listeners) == 1
     assert (
         dr.async_get(hass).async_get_device_by_identifier(
-            ("ampio", entry.unique_id), entry.entry_id
+            ("ampio", entry.entry_id), entry.entry_id
         )
         is not None
     )
@@ -209,7 +209,7 @@ async def test_delete_device(hass: HomeAssistant, apis: list[AmpioBridge]) -> No
     )
     assert (
         dr.async_get(hass).async_get_device_by_identifier(
-            ("ampio", entry.unique_id), entry.entry_id
+            ("ampio", entry.entry_id), entry.entry_id
         )
         is not None
     )

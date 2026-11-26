@@ -8,12 +8,14 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "config_url": "Config URL"
+          "config_url": "Config URL",
+          "gateway_mac": "Gateway MAC address (optional)"
         },
         "data_description": {
           "host": "IP address or hostname of the Ampio CAN Bridge",
           "port": "Port number (default: 20001)",
-          "config_url": "URL to YAML configuration file (http(s)://...)"
+          "config_url": "URL to YAML configuration file (http(s)://...)",
+          "gateway_mac": "MAC from the gateway label or configuration. Allows HA discovery to recognize address changes."
         }
       },
       "reconfigure": {
@@ -22,12 +24,14 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "config_url": "Config URL"
+          "config_url": "Config URL",
+          "gateway_mac": "Gateway MAC address (optional)"
         },
         "data_description": {
           "host": "IP address or hostname of the Ampio CAN Bridge",
           "port": "Port number (default: 20001)",
-          "config_url": "URL to YAML configuration file (http(s)://...)"
+          "config_url": "URL to YAML configuration file (http(s)://...)",
+          "gateway_mac": "MAC from the gateway label or configuration. Allows HA discovery to recognize address changes."
         }
       },
       "discovery_confirm": {
@@ -36,12 +40,14 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "config_url": "Config URL"
+          "config_url": "Config URL",
+          "gateway_mac": "Gateway MAC address (optional)"
         },
         "data_description": {
           "host": "IP address or hostname of the Ampio CAN Bridge",
           "port": "Port number (default: 20001)",
-          "config_url": "URL to YAML configuration file (http(s)://...)"
+          "config_url": "URL to YAML configuration file (http(s)://...)",
+          "gateway_mac": "MAC from the gateway label or configuration. Allows HA discovery to recognize address changes."
         }
       }
     },
@@ -59,7 +65,8 @@
       "invalid_yaml": "The file must contain a YAML configuration mapping.",
       "invalid_host": "Enter an IP address or hostname.",
       "invalid_config": "The file does not contain a valid Ampio configuration.",
-      "unknown": "An unexpected error occurred."
+      "unknown": "An unexpected error occurred.",
+      "invalid_mac": "Enter a valid MAC address or leave the field empty."
     }
   },
   "entity": {
@@ -95,6 +102,30 @@
     },
     "abort": {
       "traffic_not_supported": "Module monitoring requires an aioampio version with per-module traffic metrics."
+    }
+  },
+  "exceptions": {
+    "command_failed": {
+      "message": "The command could not be sent. Check the CAN gateway connection."
+    },
+    "cannot_connect": {
+      "message": "Cannot connect to the CAN gateway. Home Assistant will retry."
+    },
+    "invalid_config": {
+      "message": "The Ampio configuration is invalid. Reconfigure the integration to correct it."
+    },
+    "configuration_required": {
+      "message": "No cached Ampio configuration is available. Open Reconfigure and provide its YAML URL."
+    }
+  },
+  "issues": {
+    "text_migrated": {
+      "title": "Status text moved to a sensor",
+      "description": "The read-only entity `{old_entity_id}` was replaced by `{new_entity_id}`. Update references in automations, scripts, and dashboards. Its name, icon, and area preferences were preserved."
+    },
+    "config_required": {
+      "title": "Ampio configuration required",
+      "description": "The legacy YAML file for {name} could not be recovered.\n\n1. Open Settings > Devices & services > Ampio.\n2. Select Reconfigure for this entry.\n3. Enter the HTTP(S) URL of your YAML configuration and submit it.\n\nAfter validation, the integration starts using the same configuration entry."
     }
   }
 }

@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 from aioampio import AmpioBridge
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant.common import MockConfigEntry
 
 from .test_integration import entity_id
@@ -348,7 +349,7 @@ async def test_failed_command_does_not_replace_saved_color(
     original = (128, 64, 32, 16)
     await receive(hass, api, original)
     api.send.side_effect = ConnectionError("test send failure")
-    with pytest.raises(ConnectionError, match="test send failure"):
+    with pytest.raises(HomeAssistantError, match="command could not be sent"):
         await hass.services.async_call(
             "light",
             "turn_on",
