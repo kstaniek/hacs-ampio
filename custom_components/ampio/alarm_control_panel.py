@@ -70,30 +70,34 @@ class AmpioAlarm(AmpioBaseEntity, AlarmControlPanelEntity):
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
         """Return the current alarm control panel entity state."""
-        if self.resource.state is None:
-            return None
-        armed = self.resource.state.get("armed", False)
-        state = AlarmControlPanelState.DISARMED
-
-        if armed is True:
-            state = AlarmControlPanelState.ARMED_AWAY
-        arming = self.resource.state.get("arming", False) or self.resource.state.get(
-            "arming_10s", False
+        resource_state = (
+            self.resource.get_state()
+            if hasattr(self.resource, "get_state")
+            else self.resource.state
         )
-        if arming is True:
-            state = AlarmControlPanelState.ARMING
-        breached = self.resource.state.get("breached", False)
-        if breached is True:
-            state = AlarmControlPanelState.PENDING
-        alarm = self.resource.state.get("alarm", False)
-        if alarm is True:
-            state = AlarmControlPanelState.ALARM_TRIGGERED
-        return state
+        if not resource_state:
+            return None
+        if resource_state.get("alarm") is True:
+            return AlarmControlPanelState.TRIGGERED
+        if resource_state.get("breached") is True:
+            return AlarmControlPanelState.PENDING
+        if (
+            resource_state.get("arming") is True
+            or resource_state.get("arming_10s") is True
+        ):
+            return AlarmControlPanelState.ARMING
+        if (armed := resource_state.get("armed")) is None:
+            return None
+        return (
+            AlarmControlPanelState.ARMED_AWAY
+            if armed
+            else AlarmControlPanelState.DISARMED
+        )
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command."""
-        await self.controller.disarm(self.resource.id, code)
+        await self.async_command(self.controller.disarm(self.resource.id, code))
 
     async def async_alarm_arm_away(self, code: str | None = None) -> None:
         """Send arm away command."""
-        await self.controller.arm_in_mode0(self.resource.id, code)
+        await self.async_command(self.controller.arm_in_mode0(self.resource.id, code))

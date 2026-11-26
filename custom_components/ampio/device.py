@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from aioampio.controllers.events import EventType
 from homeassistant.core import callback
-from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN
@@ -26,7 +25,6 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
     entry = bridge.config_entry
     hass = bridge.hass
     dev_reg = dr.async_get(hass)
-    ar_reg = ar.async_get(hass)
     dev_controller = bridge.api.devices
 
     @callback
@@ -37,28 +35,23 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
             "name": f"{ampio_resource.name}",
             "manufacturer": "Ampio",
             "model": ampio_resource.model.name,
-            "model_id": ampio_resource.model.value,
-            "sw_version": ampio_resource.sw_version,
-            "hw_version": ampio_resource.pcb,
+            "model_id": str(ampio_resource.model.value),
+            "sw_version": str(ampio_resource.sw_version),
+            "hw_version": str(ampio_resource.pcb),
             "serial_number": f"{ampio_resource.can_id:08X}",
+            "suggested_area": ampio_resource.area,
         }
 
-        device = dev_reg.async_get_or_create(
+        return dev_reg.async_get_or_create(
             config_entry_id=entry.entry_id,
             **params,
         )
 
-        area = ar_reg.async_get_area_by_name(ampio_resource.area)
-        if area:
-            dev_reg.async_update_device(device.id, area_id=area.id)
-
-        return device
-
     @callback
     def remove_device(ampio_resource_id: str) -> None:
         """Remove Ampio Device from device registry."""
-        if device := dev_reg.async_get_device(
-            identifiers={(DOMAIN, ampio_resource_id)}
+        if device := dev_reg.async_get_device_by_identifier(
+            (DOMAIN, ampio_resource_id), entry.entry_id
         ):
             dev_reg.async_remove_device(device.id)
 
@@ -66,20 +59,18 @@ async def async_setup_devices(bridge: AmpioBridge) -> None:
     def handle_device_event(evt_type: EventType, ampio_resource: Device) -> None:
         """Handle events from Ampio devices."""
         if evt_type == EventType.RESOURCE_DELETED:
-            remove_device(ampio_resource.can_id)
+            remove_device(ampio_resource.id)
 
         else:
             add_device(ampio_resource)
 
     ampio_devices = list(dev_controller)
-    known_devices = [add_device(ampio_device) for ampio_device in ampio_devices]
-    # check for devices that no longr exit and remove them
+    known_device_ids = {add_device(ampio_device).id for ampio_device in ampio_devices}
     for device in dr.async_entries_for_config_entry(dev_reg, entry.entry_id):
-        if device not in known_devices:
-            dev_reg.async_remove_device(device.id)
-
-    for device in dr.async_entries_for_config_entry(dev_reg, entry.entry_id):
-        if device not in known_devices:
+        if (
+            device.id not in known_device_ids
+            and (DOMAIN, entry.entry_id) not in device.identifiers
+        ):
             dev_reg.async_remove_device(device.id)
 
     entry.async_on_unload(dev_controller.subscribe(handle_device_event))
