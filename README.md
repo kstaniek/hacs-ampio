@@ -34,6 +34,37 @@ After installation, configure the integration via the Home Assistant UI:
 2. Click **Add Integration** and search for "Ampio".
 3. Follow the setup instructions.
 
+Setup and reconfiguration validate the downloaded YAML through `aioampio` and
+check that the CAN gateway can connect. These checks send no device commands.
+If validation or connection fails, the form reports the problem and keeps the
+existing configuration and connection unchanged. Correct the input and retry.
+
+## Entity feedback and controls
+
+### Upgrading to 0.3.0
+
+Climate entities are now read-only. Remove temperature, HVAC-mode, and on/off
+actions targeting Ampio climate entities from automations and scripts. These
+controls were previously displayed but failed when called because the library
+does not implement the commands.
+
+Review automations that use a climate entity's `heat` or `off` state to determine
+whether heating is active. Use its `hvac_action` attribute (`heating` or `idle`)
+for heating activity. The entity state represents HVAC mode and can be `unknown`
+when enabled/disabled feedback is missing. Existing entity IDs are preserved.
+
+Lights, switches, and alarms remain unknown until the relevant state is received.
+An alarm report saying that no alarm is active does not establish that the system
+is disarmed; disarmed requires explicit armed-state feedback. Covers and valves
+report position and motion through Home Assistant's standard entity properties,
+including the toggle and stop actions.
+
+Climate entities currently provide read-only current temperature and heating
+activity. HVAC mode remains unknown until explicit enabled/disabled feedback is
+received; an idle heating zone is not treated as switched off. Temperature, HVAC
+mode, and on/off controls are unavailable because `aioampio` does not implement
+these commands yet. The target-temperature control is also hidden.
+
 ## Module traffic diagnostics
 
 The CAN Bridge's **Device information** model line includes the active interface,
@@ -46,7 +77,7 @@ The bridge manufacturer is Waveshare; the attached CAN modules remain Ampio.
 Integration entries use the same descriptive connection summary. Existing
 endpoint-only titles are updated on setup; user-defined titles are preserved.
 
-This release uses `aioampio==2.0.0`. The library remains independent of Home
+This release uses `aioampio==2.0.1`. The library remains independent of Home
 Assistant; this integration owns diagnostic entities and availability policy.
 
 With the new API, the CAN Bridge device has global **RX frames**, **TX frames**,

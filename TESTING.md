@@ -12,19 +12,19 @@ Use Python 3.14 in a fresh virtual environment:
 
 ```sh
 python -m venv .venv-tests
-.venv-tests/bin/python -m pip install homeassistant==2026.11.0 pytest-homeassistant==2026.11.0 aioampio==1.0.2
+.venv-tests/bin/python -m pip install homeassistant==2026.11.0 pytest-homeassistant==2026.11.0 aioampio==2.0.1
 .venv-tests/bin/python -m pytest -q
 ```
 
-Repeat with `aioampio==2.0.0b3` for beta compatibility. This does not change the
-integration manifest, which remains pinned to the stable library.
+Repeat with `aioampio==1.0.2` for legacy compatibility. This does not change the
+integration manifest, which remains pinned to `aioampio==2.0.1`.
 
 ## Local development Core
 
 Using the sibling Core checkout and its virtual environment:
 
 ```sh
-../core/.venv/bin/python -m pip install -e ../core -e ../core/packages/pytest-homeassistant aioampio==2.0.0b3
+../core/.venv/bin/python -m pip install -e ../core -e ../core/packages/pytest-homeassistant aioampio==2.0.1
 ../core/.venv/bin/python -m pytest -q
 ```
 
@@ -69,8 +69,11 @@ Flow tests cover discovery confirmation and duplicates, input/download failures,
 reconfiguration without extra reloads, and migration failure preservation.
 English and Polish strings are checked for matching keys and placeholders.
 
-The current acceptance policy is receive-only. Physical command checks and the
-stable version 2 dependency upgrade remain deferred.
+Automated tests replace all physical I/O. The stable version 2 dependency and
+RGBW command behavior were accepted separately on the explicitly authorized
+module `00001879`, with its original output levels restored. This acceptance does
+not establish physical behavior for other entity platforms. The 0.3.0 fixes were
+checked in development HA without issuing device commands.
 
 ## RGBW brightness
 
@@ -80,10 +83,16 @@ off/on restores the last observed nonzero color and brightness. Feedback reports
 integer brightness as the highest channel level and normalizes color independently.
 
 RGBW tests exercise real HA light services and capture exact CAN frames with both
-stable and beta libraries. Physical testing requires an explicitly designated
+current and legacy libraries. Physical testing requires an explicitly designated
 device; save its channel levels before sending commands and restore them afterward.
 
 ## Configuration UI serialization
+
+Regression tests also validate YAML using the actual library before committing
+configuration changes, mock only gateway connection I/O, and confirm failures
+leave a running entry unchanged. Platform contract tests cover unknown feedback,
+partial alarm flags, cover/valve position and motion, toggle decisions, and
+rejection of unsupported climate controls.
 
 HTTP tests use HA's authenticated configuration endpoints to serialize manual,
 reconfiguration, discovery, and error forms. They also submit reconfiguration to

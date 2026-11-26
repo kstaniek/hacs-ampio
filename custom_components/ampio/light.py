@@ -100,15 +100,17 @@ class AmpioLight(AmpioBaseEntity, LightEntity):
         return self.resource.state.get("brightness") if self.resource.state else None
 
     @property
-    def is_on(self) -> bool:
-        """Return True if the light is on."""
-        if not self.resource.state:
-            return False
+    def is_on(self) -> bool | None:
+        """Return power only when a binary or output-level report is known."""
         state = self.resource.state.get("state")
-        if state is None and self.resource.supports_color:
+        if state is not None:
+            return bool(state)
+        if self.resource.supports_color:
             levels = self._rgbw_levels()
-            return any(levels) if levels is not None else False
-        return bool(state)
+            return any(levels) if levels is not None else None
+        if self.resource.supports_dimming and self.brightness is not None:
+            return self.brightness > 0
+        return None
 
     def _rgbw_levels(self) -> tuple[int, int, int, int] | None:
         """Read the actual output channel levels reported by Ampio."""

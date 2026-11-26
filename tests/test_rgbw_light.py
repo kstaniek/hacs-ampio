@@ -95,6 +95,19 @@ async def test_received_rgbw_has_separate_brightness(
     apis[0].send.assert_not_awaited()
 
 
+async def test_missing_rgbw_feedback_is_unknown(
+    hass: HomeAssistant, apis: list[AmpioBridge], rgbw_light: str
+) -> None:
+    """Do not report off before a complete output-level report is available."""
+    assert hass.states.get(rgbw_light).state == "unknown"
+    await apis[0].state_store.set("00000123.rgb.1", {"red": 64})
+    await hass.async_block_till_done()
+    assert hass.states.get(rgbw_light).state == "unknown"
+    await receive(hass, apis[0], (64, 0, 0, 0))
+    assert hass.states.get(rgbw_light).state == "on"
+    apis[0].send.assert_not_awaited()
+
+
 @pytest.mark.parametrize(
     ("service_data", "levels"),
     [
