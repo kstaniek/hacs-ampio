@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from aioampio.controllers.events import EventType
 from homeassistant.components.valve import (
-    ATTR_CURRENT_POSITION,
     ValveEntity,
     ValveEntityDescription,
     ValveEntityFeature,
 )
+from homeassistant.const import STATE_CLOSED, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant, callback
 
 from .entity import AmpioBaseEntity
@@ -69,35 +69,48 @@ class AmpioValve(AmpioBaseEntity, ValveEntity):
         )
 
     @property
-    def state(self) -> str:
-        """Return the state of the valve."""
-        return self.resource.state
+    def current_valve_position(self) -> int | None:
+        """Return the reported valve position."""
+        return (
+            self.resource.valve.position
+            if self.resource.state not in (None, STATE_UNKNOWN)
+            else None
+        )
 
     @property
-    def state_attributes(self) -> dict[str, Any]:
-        """Return the state attributes."""
-        data = {}
+    def is_closed(self) -> bool | None:
+        """Return whether the reported valve state is closed."""
+        if self.resource.state in (None, STATE_UNKNOWN):
+            return None
+        return self.resource.state == STATE_CLOSED
 
-        if (current := self.resource.valve.position) is not None:
-            data[ATTR_CURRENT_POSITION] = current
+    @property
+    def is_opening(self) -> bool:
+        """Return whether the module reports opening motion."""
+        return self.resource.opening
 
-        return data
+    @property
+    def is_closing(self) -> bool:
+        """Return whether the module reports closing motion."""
+        return self.resource.closing
 
     async def async_set_valve_position(self, position: int) -> None:
         """Move the valve to a specific position."""
-        await self.controller.set_position(
-            self.resource.id,
-            position=position,
+        await self.async_command(
+            self.controller.set_position(
+                self.resource.id,
+                position=position,
+            )
         )
 
     async def async_stop_valve(self) -> None:
         """Stop the valve."""
-        await self.controller.stop_valve(self.resource.id)
+        await self.async_command(self.controller.stop_valve(self.resource.id))
 
     async def async_open_valve(self) -> None:
         """Open the valve."""
-        await self.controller.open_valve(self.resource.id)
+        await self.async_command(self.controller.open_valve(self.resource.id))
 
     async def async_close_valve(self) -> None:
         """Close the valve."""
-        await self.controller.close_valve(self.resource.id)
+        await self.async_command(self.controller.close_valve(self.resource.id))

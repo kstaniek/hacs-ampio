@@ -1,20 +1,11 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-set -e
-
-cd "$(dirname "$0")/.."
-
-# Create config dir if not present
-if [[ ! -d "${PWD}/config" ]]; then
-    mkdir -p "${PWD}/config"
-    hass --config "${PWD}/config" --script ensure_config
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+if ! command -v uv >/dev/null 2>&1; then
+    printf 'Install uv first: https://docs.astral.sh/uv/getting-started/installation/\n' >&2
+    exit 1
 fi
-
-# Set the path to custom_components
-## This let's us have the structure we want <root>/custom_components/integration_blueprint
-## while at the same time have Home Assistant configuration inside <root>/config
-## without resulting to symlinks.
-export PYTHONPATH="${PYTHONPATH}:${PWD}/custom_components"
-
-# Start Home Assistant
-hass --config "${PWD}/config" --debug
+unset PYTHONHOME PYTHONPATH VIRTUAL_ENV
+exec uv run --no-project --python "$(cat "$repo_dir/.python-version")" \
+    python "$repo_dir/scripts/dev.py" develop "$@"
