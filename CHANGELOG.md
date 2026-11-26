@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0
+
+- Add an enabled-by-default CAN Bridge **Reconnects** diagnostic counter using
+  aioampio's transport retry metric. Publish only changes, immediately with the
+  aioampio 2.1.0 notification API. Retain the last count while disconnected
+  and reset on integration reload or HA restart.
+- Require aioampio 2.1.0. Keep compatibility coverage for 2.0.2 fallback updates
+  and the legacy 1.0.2 API.
+
 ## 0.4.0
 
 ### Breaking changes

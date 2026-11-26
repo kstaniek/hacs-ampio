@@ -77,6 +77,9 @@
       "tx_total": {
         "name": "TX frames"
       },
+      "reconnects": {
+        "name": "Reconnects"
+      },
       "last_rx_at": {
         "name": "Last frame received"
       }
