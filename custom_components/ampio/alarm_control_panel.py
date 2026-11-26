@@ -75,27 +75,24 @@ class AmpioAlarm(AmpioBaseEntity, AlarmControlPanelEntity):
             if hasattr(self.resource, "get_state")
             else self.resource.state
         )
-        if not resource_state or all(
-            value is None for value in resource_state.values()
-        ):
+        if not resource_state:
             return None
-        armed = resource_state.get("armed", False)
-        state = AlarmControlPanelState.DISARMED
-
-        if armed is True:
-            state = AlarmControlPanelState.ARMED_AWAY
-        arming = resource_state.get("arming", False) or resource_state.get(
-            "arming_10s", False
+        if resource_state.get("alarm") is True:
+            return AlarmControlPanelState.TRIGGERED
+        if resource_state.get("breached") is True:
+            return AlarmControlPanelState.PENDING
+        if (
+            resource_state.get("arming") is True
+            or resource_state.get("arming_10s") is True
+        ):
+            return AlarmControlPanelState.ARMING
+        if (armed := resource_state.get("armed")) is None:
+            return None
+        return (
+            AlarmControlPanelState.ARMED_AWAY
+            if armed
+            else AlarmControlPanelState.DISARMED
         )
-        if arming is True:
-            state = AlarmControlPanelState.ARMING
-        breached = resource_state.get("breached", False)
-        if breached is True:
-            state = AlarmControlPanelState.PENDING
-        alarm = resource_state.get("alarm", False)
-        if alarm is True:
-            state = AlarmControlPanelState.TRIGGERED
-        return state
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command."""

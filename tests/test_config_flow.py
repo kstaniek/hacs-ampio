@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, patch
 import aiohttp
 import pytest
 import yaml
+from aioampio import AmpioBridge
 from homeassistant.config_entries import SOURCE_USER, SOURCE_ZEROCONF
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -259,6 +260,136 @@ async def test_reconfigure_duplicate(hass: HomeAssistant) -> None:
     )
     assert result["reason"] == "already_configured"
     assert entry.data["host"] == "192.0.2.1"
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"devices": "not-a-list"},
+        {"devices": [{"can_id": 0x123, "model": "invalid"}]},
+        {"devices": [{"can_id": 0x123}, {"can_id": 0x123}]},
+    ],
+)
+async def test_invalid_ampio_config_keeps_form_recoverable(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    config_apis: list[AmpioBridge],
+    config: dict[str, Any],
+) -> None:
+    """Validate configuration using the actual library before opening a connection."""
+    aioclient_mock.get(INPUT["config_url"], text=yaml.safe_dump(config))
+    result = await hass.config_entries.flow.async_init(
+        "ampio", context={"source": SOURCE_USER}, data=INPUT
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {"config_url": "invalid_config"}
+    assert not hass.config_entries.async_entries("ampio")
+    config_apis[0].start.assert_not_awaited()
+    config_apis[0].stop.assert_awaited_once()
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(INPUT["config_url"], text=yaml.safe_dump(CONFIG))
+    with patch(
+        "custom_components.ampio.async_setup_entry", new=AsyncMock(return_value=True)
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], INPUT
+        )
+        await hass.async_block_till_done()
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["result"].unique_id == "192.0.2.1:20001"
+    config_apis[1].start.assert_awaited_once()
+    config_apis[1].stop.assert_awaited_once()
+    config_apis[1].send.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("connection_result", "error"),
+    [
+        (False, "cannot_connect"),
+        (TimeoutError(), "cannot_connect"),
+        (OSError(), "cannot_connect"),
+        (RuntimeError("test failure"), "unknown"),
+    ],
+)
+async def test_gateway_validation_error_and_recovery(  # noqa: PLR0913
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    config_apis: list[AmpioBridge],
+    config_connection: AsyncMock,
+    *,
+    connection_result: bool | Exception,
+    error: str,
+) -> None:
+    """Keep setup recoverable and close the candidate connection on every result."""
+    aioclient_mock.get(INPUT["config_url"], text=yaml.safe_dump(CONFIG))
+    config_connection.side_effect = [connection_result, True]
+    result = await hass.config_entries.flow.async_init(
+        "ampio", context={"source": SOURCE_USER}, data=INPUT
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {"base": error}
+    assert not hass.config_entries.async_entries("ampio")
+    config_apis[0].stop.assert_awaited_once()
+    with patch(
+        "custom_components.ampio.async_setup_entry", new=AsyncMock(return_value=True)
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], INPUT
+        )
+        await hass.async_block_till_done()
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["result"].unique_id == "192.0.2.1:20001"
+    config_apis[1].stop.assert_awaited_once()
+    config_apis[1].send.assert_not_awaited()
+
+
+async def test_invalid_reconfiguration_preserves_running_entry(
+    hass: HomeAssistant,
+    apis: list[AmpioBridge],
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    """Do not replace data, identifiers, devices, or a running API with invalid YAML."""
+    entry = await setup_entry(hass)
+    previous_data = dict(entry.data)
+    registry = dr.async_get(hass)
+    gateway = registry.async_get_device_by_identifier(
+        ("ampio", entry.unique_id), entry.entry_id
+    )
+    aioclient_mock.get(INPUT["config_url"], text="devices: not-a-list")
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {**INPUT, "host": "192.0.2.2"}
+    )
+    await hass.async_block_till_done()
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {"config_url": "invalid_config"}
+    assert dict(entry.data) == previous_data
+    assert entry.unique_id == "192.0.2.1:20001"
+    assert registry.async_get(gateway.id).identifiers == {("ampio", entry.unique_id)}
+    apis[0].stop.assert_not_awaited()
+    assert len(apis) == 1
+
+
+async def test_unreachable_reconfiguration_preserves_running_entry(
+    hass: HomeAssistant,
+    apis: list[AmpioBridge],
+    aioclient_mock: AiohttpClientMocker,
+    config_connection: AsyncMock,
+) -> None:
+    """A valid download cannot replace the running entry with an unreachable host."""
+    entry = await setup_entry(hass)
+    previous_data = dict(entry.data)
+    aioclient_mock.get(INPUT["config_url"], text=yaml.safe_dump(CONFIG))
+    config_connection.return_value = False
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {**INPUT, "host": "192.0.2.2"}
+    )
+    await hass.async_block_till_done()
+    assert result["errors"] == {"base": "cannot_connect"}
+    assert dict(entry.data) == previous_data
+    apis[0].stop.assert_not_awaited()
+    assert len(apis) == 1
 
 
 async def test_reconfigure_duplicate_created_during_download(

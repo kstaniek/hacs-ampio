@@ -53,10 +53,12 @@
     },
     "error": {
       "invalid_url": "Adres URL musi używać protokołu http(s).",
-      "cannot_connect": "Nie można pobrać pliku (błąd HTTP).",
+      "cannot_connect": "Nie można połączyć się z serwerem konfiguracji lub bramką CAN.",
       "timeout": "Przekroczono limit czasu podczas pobierania pliku.",
       "invalid_yaml": "Plik musi zawierać konfigurację YAML w postaci mapowania.",
-      "invalid_host": "Podaj adres IP lub nazwę hosta."
+      "invalid_host": "Podaj adres IP lub nazwę hosta.",
+      "invalid_config": "Plik nie zawiera prawidłowej konfiguracji Ampio.",
+      "unknown": "Wystąpił nieoczekiwany błąd."
     },
     "flow_title": "{name}"
   },

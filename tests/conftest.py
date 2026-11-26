@@ -120,3 +120,27 @@ def apis() -> Iterator[list[AmpioBridge]]:
 
     with patch("custom_components.ampio.bridge.AmpioCanBridge", new=create):
         yield instances
+
+
+@pytest.fixture
+def config_connection() -> AsyncMock:
+    """Control the result of a receive-only gateway connection check."""
+    return AsyncMock(return_value=True)
+
+
+@pytest.fixture(autouse=True)
+def config_apis(config_connection: AsyncMock) -> Iterator[list[AmpioBridge]]:
+    """Validate actual configuration while replacing flow connection I/O."""
+    instances = []
+
+    def create(cfg: dict[str, Any], **kwargs: Any) -> AmpioBridge:
+        api = AmpioBridge(cfg, **kwargs)
+        api.start = AsyncMock()
+        api.wait_connected = config_connection
+        api.stop = AsyncMock()
+        api.send = AsyncMock()
+        instances.append(api)
+        return api
+
+    with patch("custom_components.ampio.config_flow.AmpioCanBridge", new=create):
+        yield instances

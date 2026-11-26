@@ -54,10 +54,12 @@
     },
     "error": {
       "invalid_url": "URL must be http(s).",
-      "cannot_connect": "Cannot download the file (HTTP error).",
+      "cannot_connect": "Cannot connect to the configuration server or CAN gateway.",
       "timeout": "Timed out while downloading the file.",
       "invalid_yaml": "The file must contain a YAML configuration mapping.",
-      "invalid_host": "Enter an IP address or hostname."
+      "invalid_host": "Enter an IP address or hostname.",
+      "invalid_config": "The file does not contain a valid Ampio configuration.",
+      "unknown": "An unexpected error occurred."
     }
   },
   "entity": {

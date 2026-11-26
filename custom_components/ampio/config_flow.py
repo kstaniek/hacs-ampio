@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
@@ -9,6 +11,8 @@ import aiohttp
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 import yaml
+from aioampio import AmpioBridge as AmpioCanBridge
+from can import CanError
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
@@ -28,12 +32,16 @@ from .const import (
     CONF_MODULE_TIMEOUT,
     CONF_MODULE_TIMEOUTS,
     CONFIG_VERSION,
+    DEFAULT_CAN_CHANNEL,
+    DEFAULT_CAN_INTERFACE,
     DEFAULT_MODULE_TIMEOUT,
     DEFAULT_PORT,
     DOMAIN,
     MAX_PORT,
 )
 from .utils import describe_can_connection
+
+LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
@@ -108,6 +116,35 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
             return {}, {CONF_CONFIG_URL: "invalid_yaml"}
         return data, {}
 
+    async def _async_validate_config(
+        self, config: dict[str, Any], host: str, port: int
+    ) -> dict[str, str]:
+        """Validate through the library and connect without transmitting commands."""
+        api = AmpioCanBridge(
+            config,
+            interface=DEFAULT_CAN_INTERFACE,
+            channel=DEFAULT_CAN_CHANNEL,
+            host=host,
+            port=port,
+        )
+        try:
+            try:
+                await api.initialize()
+            except (ValueError, TypeError, KeyError):
+                return {CONF_CONFIG_URL: "invalid_config"}
+            async with asyncio.timeout(10):
+                await api.start()
+                if not await api.wait_connected():
+                    return {"base": "cannot_connect"}
+        except (TimeoutError, OSError, CanError):
+            return {"base": "cannot_connect"}
+        except Exception:
+            LOGGER.exception("Unexpected error validating the Ampio configuration")
+            return {"base": "unknown"}
+        finally:
+            await api.stop()
+        return {}
+
     async def _async_submit(
         self, user_input: dict[str, Any], *, step_id: str
     ) -> ConfigFlowResult:
@@ -124,6 +161,8 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="already_configured")
 
         config, errors = await self.download_and_update_config(url_str)
+        if not errors:
+            errors = await self._async_validate_config(config, host, port)
         if not errors:
             if self._endpoint_configured(unique_id, entry_id):
                 return self.async_abort(reason="already_configured")
