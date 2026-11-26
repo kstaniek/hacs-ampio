@@ -77,6 +77,9 @@
       "tx_total": {
         "name": "Wysłane ramki"
       },
+      "reconnects": {
+        "name": "Ponowne połączenia"
+      },
       "last_rx_at": {
         "name": "Ostatnia odebrana ramka"
       }

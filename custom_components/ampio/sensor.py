@@ -68,7 +68,7 @@ async def async_setup_entry(
     if bridge.traffic is not None:
         async_add_entities(
             AmpioTrafficSensor(bridge.traffic, None, counter)
-            for counter in ("rx_total", "tx_total", "last_rx_at")
+            for counter in ("rx_total", "tx_total", "last_rx_at", "reconnects")
         )
 
         @callback
@@ -89,7 +89,7 @@ async def async_setup_entry(
 
 
 class AmpioTrafficSensor(SensorEntity):
-    """Diagnostic traffic counter which remains readable during module silence."""
+    """Gateway and module diagnostics which remain readable during silence."""
 
     _attr_should_poll = False
     _attr_has_entity_name = True
@@ -113,6 +113,8 @@ class AmpioTrafficSensor(SensorEntity):
         self._attr_unique_id = f"{owner_id}_{counter}"
         self._attr_translation_key = counter
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, identifier)})
+        if counter == "reconnects":
+            self._attr_native_unit_of_measurement = None
         if counter == "last_rx_at":
             self._attr_entity_registry_enabled_default = False
             self._attr_device_class = SensorDeviceClass.TIMESTAMP
@@ -122,6 +124,8 @@ class AmpioTrafficSensor(SensorEntity):
     @property
     def native_value(self) -> int | datetime | None:
         """Return the most recently published counter snapshot."""
+        if self._counter == "reconnects":
+            return self._traffic.reconnects
         snapshot = (
             self._traffic.gateway_metrics
             if self._can_id is None
@@ -133,6 +137,11 @@ class AmpioTrafficSensor(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Keep diagnostic updates separate from functional availability."""
+        if self._counter == "reconnects":
+            self.async_on_remove(
+                self._traffic.subscribe_reconnects(self.async_write_ha_state)
+            )
+            return
         self.async_on_remove(
             self._traffic.subscribe_diagnostics(self.async_write_ha_state)
         )

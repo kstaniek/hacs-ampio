@@ -109,20 +109,32 @@ The bridge manufacturer is Waveshare; the attached CAN modules remain Ampio.
 Integration entries use the same descriptive connection summary. Existing
 endpoint-only titles are updated on setup; user-defined titles are preserved.
 
-This release uses `aioampio==2.0.2`. The library remains independent of Home
+This release uses `aioampio==2.1.0`. The library remains independent of Home
 Assistant; this integration owns diagnostic entities and availability policy.
 
 With the new API, the CAN Bridge device has global **RX frames**, **TX frames**,
-and **Last frame received** diagnostic sensors. Each configured module has the
-same three diagnostics, including modules without other sensors. RX counts valid
-frames received from that module, even when their values are unchanged or their
+**Reconnects**, and **Last frame received** diagnostic sensors. Each configured
+module has RX/TX counters and a last-frame timestamp, including modules without
+other sensors. RX counts valid frames received from that module, even when their values are unchanged or their
 payload type has no decoder. TX counts frames successfully sent by this bridge
 to that module, including every fragment of a multi-frame command. It does not
 count other controllers' commands and does not prove receipt by the module.
 Counters survive gateway reconnects and reset on integration reload or restart.
-Their HA states refresh every 30 seconds and remain readable when a module is
-unavailable. **Last frame received** entities are disabled by default to avoid
-frequent Activity and History entries. Enable them on the device's entity page
+**Reconnects** counts the library's transport retry cycles, including retries
+that do not establish a connection. The initial connection is not a reconnect.
+The counter remains readable while the gateway is disconnected and is enabled
+by default. The module availability watchdog does not increment it or request
+a reconnect.
+
+The reconnect sensor updates only when its count changes. With the pinned
+aioampio 2.1.0 notification API, HA receives each change immediately, independently
+of traffic updates. Compatibility with aioampio 2.0.2 uses the existing one-second
+availability check; unchanged values are not published. No additional polling
+timer is created.
+
+RX/TX counters and last-frame timestamps refresh every 30 seconds and remain
+readable when a module is unavailable. **Last frame received** entities are
+disabled by default to avoid frequent Activity and History entries. Enable them on the device's entity page
 when troubleshooting. Disabling these entities does not affect the watchdog.
 Existing enabled timestamp entities must be disabled separately in HA.
 Last-frame timestamps record actual UTC reception time and remain

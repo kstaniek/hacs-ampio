@@ -33,9 +33,12 @@ class ModuleTrafficMonitor:
         self.bridge = bridge
         self.metrics = bridge.api.module_metrics
         self.gateway_metrics = bridge.api.metrics
+        self.reconnects = self.gateway_metrics.reconnects
+        self._push_reconnects = hasattr(bridge.api, "subscribe_reconnects")
         self._available: dict[int | None, bool] = {}
         self._listeners: dict[int | None, list[Callable[[], None]]] = defaultdict(list)
         self._diagnostic_listeners: list[Callable[[], None]] = []
+        self._reconnect_listeners: list[Callable[[], None]] = []
         self._last_publish = monotonic()
         self._timeout = bridge.config_entry.options.get(
             CONF_MODULE_TIMEOUT, DEFAULT_MODULE_TIMEOUT
@@ -45,6 +48,10 @@ class ModuleTrafficMonitor:
     @callback
     def start(self) -> None:
         """Start one shared timer, cleaned up when the entry unloads."""
+        if self._push_reconnects:
+            self.bridge.config_entry.async_on_unload(
+                self.bridge.api.subscribe_reconnects(self._async_reconnects_changed)
+            )
         self.async_refresh()
         self.bridge.config_entry.async_on_unload(
             async_track_time_interval(
@@ -75,8 +82,25 @@ class ModuleTrafficMonitor:
         return lambda: self._diagnostic_listeners.remove(listener)
 
     @callback
+    def subscribe_reconnects(self, listener: Callable[[], None]) -> Callable[[], None]:
+        """Subscribe to changes independently of the traffic publishing interval."""
+        self._reconnect_listeners.append(listener)
+        return lambda: self._reconnect_listeners.remove(listener)
+
+    @callback
+    def _async_reconnects_changed(self, count: int) -> None:
+        """Publish only changed reconnect counts on the HA event loop."""
+        if self.reconnects == count:
+            return
+        self.reconnects = count
+        for listener in tuple(self._reconnect_listeners):
+            listener()
+
+    @callback
     def async_refresh(self, now: datetime | None = None) -> None:
-        """Update availability each second and diagnostic states every 30 seconds."""
+        """Check availability, with throttling only for frame diagnostics."""
+        if not self._push_reconnects:
+            self._async_reconnects_changed(self.bridge.api.metrics.reconnects)
         metrics = self.bridge.api.module_metrics
         connected = self.bridge.api.connected
         available: dict[int | None, bool] = {None: connected}

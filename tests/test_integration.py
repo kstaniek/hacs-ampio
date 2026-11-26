@@ -80,7 +80,7 @@ async def test_setup(
     assert ar.async_get(hass).async_get_area(device.area_id).name == "Test room"
     assert len(
         er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
-    ) == (15 if hasattr(apis[0], "module_metrics") else 9)
+    ) == (16 if hasattr(apis[0], "module_metrics") else 9)
     gateway = dr.async_get(hass).async_get_device_by_identifier(
         ("ampio", entry.entry_id), entry.entry_id
     )

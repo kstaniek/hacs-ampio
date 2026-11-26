@@ -3,7 +3,7 @@
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from aioampio import AmpioBridge
@@ -49,11 +49,19 @@ async def setup_modules(hass: HomeAssistant) -> tuple:
 
 
 def snapshot(
-    age: float | None, rx: int = 1, tx: int = 0, timestamp: datetime | None = None
+    age: float | None,
+    rx: int = 1,
+    tx: int = 0,
+    timestamp: datetime | None = None,
+    reconnects: int = 0,
 ) -> SimpleNamespace:
     """Represent the public immutable metrics contract without physical I/O."""
     return SimpleNamespace(
-        rx_total=rx, tx_total=tx, last_rx_age_s=age, last_rx_at=timestamp
+        rx_total=rx,
+        tx_total=tx,
+        last_rx_age_s=age,
+        last_rx_at=timestamp,
+        reconnects=reconnects,
     )
 
 
@@ -68,7 +76,7 @@ async def test_all_modules_have_diagnostics(
         for entity in er.async_entries_for_config_entry(registry, entry.entry_id)
         if entity.entity_category == er.EntityCategory.DIAGNOSTIC
     ]
-    assert len(diagnostics) == 9
+    assert len(diagnostics) == 10
     assert len({entity.device_id for entity in diagnostics}) == 3
     timestamps = [
         entity for entity in diagnostics if entity.unique_id.endswith("last_rx_at")
@@ -141,6 +149,71 @@ async def test_silence_and_unchanged_rx_restore_all_owner_entities(
         assert hass.states.get(entity_id(hass, "switch", "switch2")).state == "on"
     api.send.assert_not_awaited()
     assert not api._reconnect_now.is_set()
+
+
+async def test_gateway_reconnect_counter(
+    hass: HomeAssistant, apis: list[AmpioBridge]
+) -> None:
+    """Publish only changed counts, independently of traffic throttling."""
+    entry, monitor = await setup_modules(hass)
+    api = apis[0]
+    registry = er.async_get(hass)
+    counters = [
+        entity
+        for entity in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if entity.unique_id.endswith("_reconnects")
+    ]
+    assert len(counters) == 1
+    counter = counters[0]
+    assert counter.unique_id == f"{entry.entry_id}_reconnects"
+    assert counter.entity_category == er.EntityCategory.DIAGNOSTIC
+    assert counter.disabled_by is None
+    gateway = dr.async_get(hass).async_get_device_by_identifier(
+        ("ampio", entry.entry_id), entry.entry_id
+    )
+    assert counter.device_id == gateway.id
+    state = hass.states.get(counter.entity_id)
+    assert state.state == "0"
+    assert state.attributes["state_class"] == "total_increasing"
+    assert "unit_of_measurement" not in state.attributes
+    with (
+        patch("custom_components.ampio.traffic.monotonic", return_value=100) as clock,
+        patch.object(type(api), "connected", new_callable=PropertyMock) as connected,
+    ):
+        monitor._last_publish = 100
+        connected.return_value = False
+        api._reconnects = 3
+        clock.return_value = 129
+        # Older published APIs have no push notification; use the 1s monitor.
+        if hasattr(api, "subscribe_reconnects"):
+            api._reconnects = 2
+            api._record_reconnect()
+        else:
+            assert hass.states.get(counter.entity_id).state == "0"
+            monitor.async_refresh()
+        assert hass.states.get(counter.entity_id).state == "3"
+        assert monitor._last_publish == 100
+        # Neither unchanged values nor periodic traffic updates notify this sensor.
+        with patch.object(monitor, "_reconnect_listeners", [changed := Mock()]):
+            monitor.async_refresh()
+            clock.return_value = 130
+            monitor.async_refresh()
+            changed.assert_not_called()
+        connected.return_value = True
+        clock.return_value = 160
+        monitor.async_refresh()
+        assert hass.states.get(counter.entity_id).state == "3"
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert registry.async_get(counter.entity_id).id == counter.id
+    assert hass.states.get(counter.entity_id).state == "0"
+    assert not monitor._diagnostic_listeners
+    assert not monitor._reconnect_listeners
+    for instance in apis:
+        instance.send.assert_not_awaited()
+        assert not instance._reconnect_now.is_set()
+    if hasattr(api, "subscribe_reconnects"):
+        assert not api._reconnect_listeners
 
 
 async def test_fresh_rx_required_after_connection_and_diagnostics_throttled(

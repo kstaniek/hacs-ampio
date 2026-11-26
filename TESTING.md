@@ -12,19 +12,20 @@ Use Python 3.14 in a fresh virtual environment:
 
 ```sh
 python -m venv .venv-tests
-.venv-tests/bin/python -m pip install homeassistant==2026.11.0 pytest-homeassistant==2026.11.0 aioampio==2.0.2
+.venv-tests/bin/python -m pip install homeassistant==2026.11.0 pytest-homeassistant==2026.11.0 aioampio==2.1.0
 .venv-tests/bin/python -m pytest -q
 ```
 
-Repeat with `aioampio==1.0.2` for legacy compatibility. This does not change the
-integration manifest, which remains pinned to `aioampio==2.0.2`.
+Repeat with `aioampio==2.0.2` for fallback notification coverage and
+`aioampio==1.0.2` for legacy compatibility. This does not change the
+integration manifest, which remains pinned to `aioampio==2.1.0`.
 
 ## Local development Core
 
 Using the sibling Core checkout and its virtual environment:
 
 ```sh
-../core/.venv/bin/python -m pip install -e ../core -e ../core/packages/pytest-homeassistant aioampio==2.0.2
+../core/.venv/bin/python -m pip install -e ../core -e ../core/packages/pytest-homeassistant aioampio==2.1.0
 ../core/.venv/bin/python -m pytest -q
 ```
 
@@ -34,7 +35,7 @@ To test uncommitted library changes instead of an installed wheel:
 PYTHONPATH="$(realpath ../aioampio)" ../core/.venv/bin/python -m pytest -q
 ```
 
-CI tests both library versions with HA 2026.11.0 and development Core pinned to
+CI tests all three library versions with HA 2026.11.0 and development Core pinned to
 `dc542e15890f1454c1fad76a1df3f4b8afa686dc`. Update the pinned revision deliberately
 when advancing the development compatibility target.
 
@@ -118,10 +119,20 @@ be serialized into browser form fields.
 failure behavior are tested with only the transport boundary mocked. Adapter
 service tests verify translated `HomeAssistantError` for lights, switches,
 covers, valves, and alarms. These five tests run against the pinned published
-`aioampio==2.0.2` dependency and skip in the legacy 1.0.2 compatibility job.
+`aioampio==2.1.0` dependency and skip in the legacy 1.0.2 compatibility job.
 CI verifies that the current dependency exports the exception before testing.
 
 Lifecycle tests cover transient connection retries, invalid configuration,
 post-start registration failures, and shutdown followed by unload without double
 stopping. Registry tests preserve user area choices and floor metadata on reload.
 All new checks are synthetic and issue no physical device commands.
+
+## Reconnect diagnostic
+
+The gateway reconnect sensor has a separate change subscription, so traffic
+refreshes do not write its state. With the `subscribe_reconnects` API introduced
+in aioampio 2.1.0, tests assert that a retry notification immediately updates the
+HA state without calling the monitor or advancing time. The aioampio 2.0.2
+compatibility job instead detects changed counts in the existing one-second
+availability check. Tests cover both paths, unchanged-value suppression,
+offline readability, subscription cleanup, and identity preservation on reload.
