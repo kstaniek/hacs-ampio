@@ -1,7 +1,14 @@
 {
     "name": "kstaniek/hacs-ampio",
-    "image": "mcr.microsoft.com/devcontainers/python:3.13",
-    "postCreateCommand": "scripts/setup",
+    "build": {
+        "dockerfile": "Dockerfile.dev"
+    },
+    "workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind",
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+    "mounts": [
+        "source=ampio-${devcontainerId}-venv,target=${containerWorkspaceFolder}/.venv,type=volume"
+    ],
+    "postCreateCommand": "sudo chown vscode:vscode .venv && scripts/setup",
     "forwardPorts": [
         8123
     ],
@@ -29,17 +36,12 @@
                 "files.trimTrailingWhitespace": true,
                 "python.analysis.typeCheckingMode": "basic",
                 "python.analysis.autoImportCompletions": true,
-                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
                 "[python]": {
                     "editor.defaultFormatter": "charliermarsh.ruff"
                 }
             }
         }
     },
-    "remoteUser": "vscode",
-    "features": {
-        "ghcr.io/devcontainers-extra/features/apt-packages:1": {
-            "packages": "ffmpeg,libturbojpeg0,libpcap-dev"
-        }
-    }
+    "remoteUser": "vscode"
 }

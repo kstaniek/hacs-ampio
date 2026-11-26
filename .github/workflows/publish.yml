@@ -43,19 +43,19 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ github.event_name == 'push' }}
         with:
-          name: hacs
-          path: ${{ github.workspace }}/custom_components/hacs
+          name: ampio
+          path: ${{ github.workspace }}/custom_components/ampio
           retention-days: 7
 
-      # Pack the HACS dir as a zip and upload to the release
-      - name: 📦 ZIP HACS Dir
+      # Pack the Ampio dir as a zip and upload to the release
+      - name: 📦 ZIP Ampio Dir
         if: ${{ github.event_name == 'release' }}
         run: |
-          cd ${{ github.workspace }}/custom_components/hacs
-          zip hacs.zip -r ./
+          cd ${{ github.workspace }}/custom_components/ampio
+          zip ampio.zip -r ./
 
       - name: 📤 Upload zip to release
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
         if: ${{ github.event_name == 'release' }}
         with:
-          files: ${{ github.workspace }}/custom_components/hacs/hacs.zip
+          files: ${{ github.workspace }}/custom_components/ampio/ampio.zip
