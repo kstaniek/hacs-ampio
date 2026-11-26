@@ -7,23 +7,128 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "config_url": "Adres URL konfiguracji"
+          "config_url": "Adres URL konfiguracji",
+          "gateway_mac": "Adres MAC bramki (opcjonalnie)"
+        },
+        "data_description": {
+          "host": "Adres IP lub nazwa hosta mostka Ampio CAN",
+          "port": "Numer portu (domyślnie: 20001)",
+          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)",
+          "gateway_mac": "Adres MAC z etykiety lub konfiguracji bramki. Pozwala rozpoznać bramkę po zmianie adresu IP."
         }
       },
       "reconfigure": {
         "title": "Przekonfiguruj Ampio",
-        "description": "Zaktualizuj host, port lub adres URL konfiguracji."
+        "description": "Zaktualizuj host, port lub adres URL konfiguracji.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Adres URL konfiguracji",
+          "gateway_mac": "Adres MAC bramki (opcjonalnie)"
+        },
+        "data_description": {
+          "host": "Adres IP lub nazwa hosta mostka Ampio CAN",
+          "port": "Numer portu (domyślnie: 20001)",
+          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)",
+          "gateway_mac": "Adres MAC z etykiety lub konfiguracji bramki. Pozwala rozpoznać bramkę po zmianie adresu IP."
+        }
+      },
+      "discovery_confirm": {
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "config_url": "Adres URL konfiguracji",
+          "gateway_mac": "Adres MAC bramki (opcjonalnie)"
+        },
+        "data_description": {
+          "host": "Adres IP lub nazwa hosta mostka Ampio CAN",
+          "port": "Numer portu (domyślnie: 20001)",
+          "config_url": "Adres URL pliku konfiguracji YAML (http(s)://...)",
+          "gateway_mac": "Adres MAC z etykiety lub konfiguracji bramki. Pozwala rozpoznać bramkę po zmianie adresu IP."
+        },
+        "title": "Wykryto mostek Ampio CAN",
+        "description": "Połącz z {name}. Potwierdź adres i port oraz podaj adres URL konfiguracji YAML."
       }
     },
     "abort": {
       "reconfigure_successful": "Konfiguracja została zaktualizowana.",
-      "missing_entry": "Nie znaleziono wpisu do przekonfigurowania."
+      "missing_entry": "Nie znaleziono wpisu do przekonfigurowania.",
+      "already_configured": "Ten punkt połączenia Ampio jest już skonfigurowany.",
+      "not_can_bridge": "Wykryta usługa nie jest mostkiem Ampio CAN.",
+      "invalid_discovery": "Wykryty mostek ma nieprawidłowy adres lub port."
     },
     "error": {
       "invalid_url": "Adres URL musi używać protokołu http(s).",
-      "cannot_connect": "Nie można pobrać pliku (błąd HTTP).",
+      "cannot_connect": "Nie można połączyć się z serwerem konfiguracji lub bramką CAN.",
       "timeout": "Przekroczono limit czasu podczas pobierania pliku.",
-      "invalid_yaml": "Plik nie jest prawidłowym YAML."
+      "invalid_yaml": "Plik musi zawierać konfigurację YAML w postaci mapowania.",
+      "invalid_host": "Podaj adres IP lub nazwę hosta.",
+      "invalid_config": "Plik nie zawiera prawidłowej konfiguracji Ampio.",
+      "unknown": "Wystąpił nieoczekiwany błąd.",
+      "invalid_mac": "Podaj prawidłowy adres MAC lub pozostaw pole puste."
+    },
+    "flow_title": "{name}"
+  },
+  "entity": {
+    "sensor": {
+      "rx_total": {
+        "name": "Odebrane ramki"
+      },
+      "tx_total": {
+        "name": "Wysłane ramki"
+      },
+      "reconnects": {
+        "name": "Ponowne połączenia"
+      },
+      "last_rx_at": {
+        "name": "Ostatnia odebrana ramka"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Monitorowanie modułów",
+        "description": "Brak ramek oznacza niedostępność modułu i nie powoduje ponownego połączenia z bramką. Wartość 0 wyłącza limit. Opcjonalne wyjątki: identyfikator CAN w zapisie szesnastkowym → sekundy, np. `00001879: 120`.",
+        "data": {
+          "module_timeout": "Limit braku ramek",
+          "module_timeouts": "Limity poszczególnych modułów"
+        },
+        "data_description": {
+          "module_timeout": "Sekundy od ostatniej odebranej ramki; 0 wyłącza limit.",
+          "module_timeouts": "Mapa identyfikatorów CAN i limitów w sekundach. Pusta mapa używa limitu domyślnego."
+        }
+      }
+    },
+    "error": {
+      "invalid_module_timeout": "Użyj znanych identyfikatorów CAN i limitów od 0 do 86400 sekund."
+    },
+    "abort": {
+      "traffic_not_supported": "Monitorowanie wymaga wersji aioampio obsługującej statystyki modułów."
+    }
+  },
+  "exceptions": {
+    "command_failed": {
+      "message": "Nie udało się wysłać polecenia. Sprawdź połączenie bramki CAN."
+    },
+    "cannot_connect": {
+      "message": "Nie można połączyć się z bramką CAN. Home Assistant ponowi próbę."
+    },
+    "invalid_config": {
+      "message": "Konfiguracja Ampio jest nieprawidłowa. Popraw ją przez rekonfigurację integracji."
+    },
+    "configuration_required": {
+      "message": "Brak zapisanej konfiguracji Ampio. Otwórz rekonfigurację i podaj adres URL pliku YAML."
+    }
+  },
+  "issues": {
+    "text_migrated": {
+      "title": "Status tekstowy został przeniesiony do czujnika",
+      "description": "Encja `{old_entity_id}` była tylko do odczytu i została zastąpiona przez `{new_entity_id}`. Zaktualizuj odwołania w automatyzacjach, skryptach i pulpitach. Zachowano nazwę, ikonę i obszar encji."
+    },
+    "config_required": {
+      "title": "Wymagana konfiguracja Ampio",
+      "description": "Nie można odzyskać starego pliku YAML dla {name}.\n\n1. Otwórz Ustawienia > Urządzenia i usługi > Ampio.\n2. Wybierz Rekonfiguruj dla tej integracji.\n3. Podaj adres HTTP(S) swojego pliku YAML i zatwierdź.\n\nPo sprawdzeniu konfiguracji integracja uruchomi się z zachowaniem istniejącego wpisu konfiguracji."
     }
   }
 }

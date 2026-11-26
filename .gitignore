@@ -14,6 +14,9 @@ coverage.xml
 
 
 # Home Assistant configuration
+.venv/
+.venv-tests/
+.dev-config*/
 config/*
 !config/configuration.yaml
 
