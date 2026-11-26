@@ -18,7 +18,7 @@ scripts/setup --stable --venv .venv-tests --config .dev-config-tests
 
 Repeat with `aioampio==2.0.2` for fallback notification coverage and
 `aioampio==1.0.2` for legacy compatibility. This does not change the
-integration manifest, which is pinned to `aioampio==2.2.0`.
+integration manifest, which is pinned to `aioampio==2.3.0`.
 For example, install a test version with
 `uv pip install --python .venv-tests/bin/python aioampio==2.0.2`, then run pytest
 directly. Starting through `scripts/develop` restores the manifest pin.
@@ -164,8 +164,33 @@ failure, command ordering, module availability, and registry/area preservation.
 The standalone library additionally validates masks and membership, catches
 duplicate physical outputs and resource IDs, and tests dependency cleanup.
 Run both repositories' suites with the matching local library before its release.
-The integration's new dependency pin and CI matrix require aioampio 2.2.0 to be
+The integration's new dependency pin and CI matrix require aioampio 2.3.0 to be
 published before releasing this integration.
+
+Relay group tests require aioampio 2.3.0 and skip on older compatibility libraries.
+They cover binary-only HA controls, a sparse mask selecting outputs 3, 5, and 6,
+individual indexed commands and feedback, and error propagation without fan-out.
+The library also rejects unsupported relay brightness and output 9, while
+accepting output 8. Both HA 2026.11.0 and development Core run the full suite.
+
+Physical relay testing on module 6686 (MREL8S model 4, PCB 5, firmware 10400)
+passed on 2026-11-26: one masked ON and one OFF frame changed exactly the three
+Garage lights. RX and user observation confirmed both transitions. Other outputs
+were unchanged and the original all-off state was restored.
+
+Relay extension validation: 342 library tests passed; 203 integration tests
+passed on each of HA 2026.11.0 and development Core. Ruff checks/formatting,
+Pylint, and mypy passed for the changed code. The configuration passed yamllint
+and library validation, with an additive comparison confirming only the Garage
+group was added.
+
+The existing dev HA was restarted with local aioampio 2.3.0 and the cached
+Garage definition. Its authenticated API confirmed `light.garaz`, on/off-only
+capability, Garage area, correct state from all three members, and a zero
+module TX counter. All 102 previous light identities and areas were preserved.
+The three members were on at verification; no command was sent by this
+deployment. Live HA service transmission remains covered by synthetic tests
+and the separately accepted physical wire-format tests above.
 
 Physical command encoding was accepted separately on module 7775 (MLED model 17,
 PCB 8, firmware 11701) on 2026-11-26. Kitchen mask 0x03FF and Sofa mask 0xFC00

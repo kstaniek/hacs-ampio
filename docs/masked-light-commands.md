@@ -5,6 +5,10 @@ passed live module tests. Automated tests cover HA group services and lifecycle;
 the running dev instance also verifies group setup and received states.
 Release aioampio 2.2.0 before the integration that pins it.
 
+The relay extension in hacs-ampio 0.7.0 requires aioampio 2.3.0. Publish that library
+before releasing an integration pinned to it. Use the local library override
+for development until then.
+
 ## Intended behavior
 
 Add a native Ampio group light alongside the existing individual light entities.
@@ -61,8 +65,9 @@ Validation rules:
   collisions before insertion; retain IDs across name and membership changes.
 - Require a nonempty list of distinct existing ordinary lights on the same
   device. Reject nested groups, missing references, and cross-device members.
-- Initially support MLED model 17 with non-RGBW dimmable members only. Each
-  member must resolve to a unique command output in the range 1–16.
+- Support MLED model 17 with non-RGBW dimmable members on outputs 1–16,
+  and MREL8S model 4 with binary non-RGBW members on outputs 1–8. Each
+  member must resolve to a unique command output within its module's range.
 - Reject unknown fields and unsupported combinations during configuration
   validation, before starting the gateway. Do not truncate oversized indices.
 - Permit overlapping groups; received member state updates all containing groups.
@@ -100,13 +105,14 @@ path. One eight-byte frame sets a common value on every selected output.
 | --- | --- | --- | --- | --- |
 | MLED Kuchnia | 1–10 | `0x03FF` | `00 00 1E 5F 14 FF FF 03` | 1 |
 | MLED Sofa | 11–16 | `0xFC00` | `00 00 1E 5F 14 FF 00 FC` | 1 |
+| Garaż (module 6686) | 3, 5, 6 | `0x0034` | `00 00 1A 1E 14 FF 34 00` | 1 |
 
 Sofa off is `00 00 1E 5F 14 00 00 FC`. Sofa brightness 128 is
 `00 00 1E 5F 14 80 00 FC`. Unselected outputs must remain unaffected.
 
 ## Commands and brightness
 
-Expose the native group as a normal dimmable HA light:
+Expose an MLED group as a normal dimmable HA light:
 
 - `turn_on(brightness=x)` sends one masked command with value `x`.
 - `turn_on()` sends the last successfully submitted nonzero group value, or
@@ -125,6 +131,25 @@ reports must not overwrite the intended level. Update command memory only after
 successful submission and serialize group calls to protect it. Memory is local
 to the session, with 255 as the fallback after restart.
 
+MREL8S groups expose HA's on/off color mode without brightness controls.
+On sends value 255 and off sends 0; intermediate brightness values are rejected
+by the library before sending. For module 6686, retain all eight individual
+lights and add:
+
+```yaml
+light_groups:
+  - id: garaz
+    name: Garaż
+    area: Garaż
+    members: [light3, light5, light6]
+```
+
+`light3` is Garaż boczne (`binout.27`), `light5` Garaż środkowe
+(`binout.29`), and `light6` Garaż tylne (`binout.30`). The generated resource
+ID is `00001a1e_light_group_garaz`; YAML suggests entity ID `light.garaz`,
+subject to normal registry collision handling. Off data is
+`00 00 1A 1E 14 00 34 00`.
+
 ## Feedback and availability
 
 The group has no independent hardware feedback. Derive its state from ordinary
@@ -136,7 +161,7 @@ entities, and overlapping groups:
 - Unknown when no member is known on and at least one member's power is unknown.
 - Brightness is the rounded mean of known levels of members known on. It is
   unknown if none of those levels is known, and 0 when the group is known off.
-  This is a representative value when members differ.
+  This applies to MLED groups; relay groups always have no brightness level.
 - Availability follows the owning module and gateway through the existing
   watchdog. Missing initial feedback yields unknown state.
 
@@ -181,6 +206,7 @@ Library releases before 2.2.0 reject `light_groups`. Install the library and
 integration changes before adding this key to external YAML. Use Reconfigure
 to fetch and validate the new YAML. Existing configurations without groups
 retain their current entities and command paths.
+MREL8S groups specifically require library 2.3.0 or later.
 
 ## Validation and acceptance
 
@@ -226,3 +252,10 @@ member levels and both groups, with zero TX frames.
 The existing development HA instance was then restarted with the local library
 and cached group definitions. Its authenticated API confirmed both group
 entities, correct areas, off states from feedback, and a zero module TX counter.
+
+MREL8S command acceptance on module 6686 (model 4, PCB 5, firmware 10400)
+passed on 2026-11-26. One masked ON frame (`00 00 1A 1E 14 FF 34 00`) and
+one OFF frame (`00 00 1A 1E 14 00 34 00`) changed exactly outputs 3, 5, and 6.
+RX confirmed each transition; the user confirmed the visible changes.
+The other five relay outputs stayed off, and the original all-off state was
+restored. This verifies on/off operation on this module/firmware.
