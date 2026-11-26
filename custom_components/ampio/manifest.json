@@ -21,7 +21,7 @@
   "requirements": [
     "aioampio==2.1.0"
   ],
-  "version": "0.5.0",
+  "version": "0.5.1",
   "zeroconf": [
     {
       "type": "_can-server._tcp.local.",
