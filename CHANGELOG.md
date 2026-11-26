@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0
+
+- Add native masked MLED group lights through device-level `light_groups`.
+  Preserve individual light controls and use one CAN frame for group on, off,
+  or common brightness. Require aioampio 2.2.0.
+- Derive group state and representative brightness from individual member
+  feedback, including wall controls, automations, and overlapping groups.
+  Preserve unknown startup state, module availability, and stable group identity.
+- Remember successful group brightness commands independently of partial
+  feedback; preserve explicit group area choices across reloads.
+- Allow immediate development HA restarts after stopped connections enter
+  TIME_WAIT, while retaining the guard against an active HTTP listener.
+
 ## 0.5.1
 
 - Rebuild development setup around an isolated `.venv`, editable sibling Core

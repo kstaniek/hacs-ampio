@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from functools import partial
 from time import monotonic
 from typing import TYPE_CHECKING, Any, cast
 
@@ -16,8 +15,11 @@ from homeassistant.components.light import (
 )
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import area_registry as ar
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import color as color_util
 
+from .const import DOMAIN
 from .entity import AmpioBaseEntity
 
 if TYPE_CHECKING:
@@ -41,7 +43,13 @@ async def async_setup_entry(
     bridge = config_entry.runtime_data
     api = bridge.api
     controller: LightsController = api.lights
-    make_light_entity = partial(AmpioLight, bridge, controller)
+
+    def make_light_entity(resource: Light) -> AmpioLight:
+        """Expose native masked groups alongside their ordinary members."""
+        entity_cls = (
+            AmpioMaskedLightGroup if getattr(resource, "members", ()) else AmpioLight
+        )
+        return entity_cls(bridge, controller, resource)
 
     @callback
     def async_add_light(event_type: EventType, resource: Light) -> None:
@@ -233,3 +241,52 @@ class AmpioLight(AmpioBaseEntity, LightEntity):
                 on=False,
             )
         )
+
+
+class AmpioMaskedLightGroup(AmpioLight):
+    """Control one module's light members with a single shared-value mask."""
+
+    def __init__(
+        self, bridge: AmpioBridge, controller: LightsController, resource: Light
+    ) -> None:
+        """Keep command intent separate from aggregated received brightness."""
+        super().__init__(bridge, controller, resource)
+        self._group_brightness = 255
+        self._group_command_lock = asyncio.Lock()
+        self._suggest_area = (
+            er.async_get(bridge.hass).async_get_entity_id(
+                Platform.LIGHT, DOMAIN, resource.id
+            )
+            is None
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Suggest the group area only when its registry entry is first created."""
+        await super().async_added_to_hass()
+        if self._suggest_area and self.resource.area:
+            areas = ar.async_get(self.hass)
+            area = areas.async_get_area_by_name(self.resource.area)
+            if area is None:
+                area = areas.async_create(self.resource.area)
+            er.async_get(self.hass).async_update_entity(self.entity_id, area_id=area.id)
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Apply one common level and remember it only after successful submission."""
+        async with self._group_command_lock:
+            brightness = kwargs.get("brightness")
+            if brightness is None:
+                brightness = self._group_brightness
+            await self.async_command(
+                self.controller.set_state(
+                    id=self.resource.id, on=True, brightness=brightness
+                )
+            )
+            if brightness:
+                self._group_brightness = brightness
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Switch the entire mask off while retaining the shared on level."""
+        async with self._group_command_lock:
+            await self.async_command(
+                self.controller.set_state(id=self.resource.id, on=False)
+            )
