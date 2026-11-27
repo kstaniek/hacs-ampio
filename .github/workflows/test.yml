@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         ha: ["2026.11.0", "dev"]
-        aioampio: ["1.0.2", "2.0.2", "2.1.0", "2.2.0", "2.3.0"]
+        aioampio: ["1.0.2", "2.0.2", "2.1.0", "2.2.0", "2.3.0", "2.4.0"]
     steps:
       - name: Check out integration
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
@@ -55,14 +55,19 @@ jobs:
           if expected != "1.0.2":
               assert hasattr(AmpioBridge, "module_metrics")
               assert hasattr(aioampio, "AmpioTransmissionError")
-          if expected in ("2.1.0", "2.2.0", "2.3.0"):
+          if expected in ("2.1.0", "2.2.0", "2.3.0", "2.4.0"):
               assert callable(getattr(AmpioBridge, "subscribe_reconnects", None))
-          if expected in ("2.2.0", "2.3.0"):
+          if expected in ("2.2.0", "2.3.0", "2.4.0"):
               from aioampio.models.light import Light
               assert "members" in Light.__dataclass_fields__
-          if expected == "2.3.0":
+          if expected in ("2.3.0", "2.4.0"):
               from aioampio.models.config import MASKED_LIGHT_OUTPUT_COUNTS, DeviceType
               assert MASKED_LIGHT_OUTPUT_COUNTS[DeviceType.MREL8S] == 8
+          if expected == "2.4.0":
+              from aioampio.models.light import Light
+              from aioampio.controllers.climates import ClimatesController
+              assert {"members_enabled", "members_visible"} <= Light.__dataclass_fields__.keys()
+              assert callable(getattr(ClimatesController, "supports_control", None))
           PYTHON
       - name: Run integration tests
         run: python -m pytest -q

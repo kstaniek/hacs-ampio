@@ -57,7 +57,7 @@ provide a valid configuration URL to recover the existing entry.
 
 ### Native masked light groups
 
-With `aioampio==2.3.0`, add `light_groups` alongside a device's existing `lights`
+With `aioampio==2.4.0`, add `light_groups` alongside a device's existing `lights`
 in the external Ampio YAML. Each group creates an additional light; its individual
 members remain independently controllable. MLED modules (model 17) support
 dimmable non-RGBW members on outputs 1–16. MREL8S relay modules (model 4) support
@@ -95,8 +95,7 @@ cards can still show hidden entities. An overlapping group's `false` visibility
 default takes precedence. Existing visibility choices and manual overrides are
 preserved across reloads and YAML edits.
 
-Both options require an updated aioampio build containing the new configuration
-fields; the published 2.3.0 build does not accept them yet.
+Both options require aioampio 2.4.0, which is included with integration 0.8.0.
 
 For the three Garage relays on module `can_id: 6686`:
 
@@ -147,9 +146,9 @@ membership to retain HA identity. Existing HA helper groups are separate;
 update dashboard/automation targets to use a native group where desired.
 
 Install the matching library/integration release before adding `light_groups`,
-then use **Reconfigure** to download and validate the YAML. For local development
-before publication, use `scripts/develop --aioampio ../aioampio`. The published
-2.3.0 library is required for standard HACS installation. See
+then use **Reconfigure** to download and validate the YAML. For local development,
+use `scripts/develop --aioampio ../aioampio`. Standard HACS installation uses
+the published aioampio 2.4.0 package. See
 [the configuration and protocol details](docs/masked-light-commands.md).
 
 ### Upgrading to 0.4.0
@@ -188,19 +187,30 @@ is disarmed; disarmed requires explicit armed-state feedback. Covers and valves
 report position and motion through Home Assistant's standard entity properties,
 including the toggle and stop actions.
 
+## Alarm control
+
+Arming and disarming use the standard HA alarm actions and a numeric PIN.
+Command status is a read-only sensor; its migration from the text platform
+does not change alarm command encoding or routing.
+
+aioampio 2.4.0 serializes alarm transactions and spaces their CAN fragments by
+10 ms. On the validated Waveshare/Satel path, sending the same
+nine-frame PIN command in a sub-millisecond burst produced no response; adding
+the gap returned `OK` and started zone 3 arming. Install integration 0.8.0 and
+restart HA to load the dependency and use the fix.
+
 ## Climate control
 
 The adapter enables temperature and operating-mode control for M-RT modules
 (model 22) when the installed aioampio build provides the validated climate
-controller. The manifest still pins the published `aioampio==2.3.0`, which
-remains read-only. The climate-capable library is currently a local development
-change: use `scripts/develop --aioampio ../aioampio` to develop with it. A library
-release and manifest update are required to distribute writable controls.
+controller. Integration 0.8.0 pins `aioampio==2.4.0`, which includes the validated
+writer. Restart HA after updating the integration to load the new dependency.
 
 The writer requires exactly one `heating.N` state, for zone 1-16. A configured
 `zone.N` state must agree. Commands use that topic's channel, independently of
 the resource ID's suffix. Other module models and older library versions retain
-the read-only behavior. Entity IDs and registry identities are preserved.
+the read-only behavior. The one-time naming migration described above applies
+on upgrade; subsequent climate updates preserve registry identities.
 
 | Control | Ampio mode | Behavior |
 | --- | --- | --- |
@@ -254,7 +264,7 @@ The bridge manufacturer is Waveshare; the attached CAN modules remain Ampio.
 Integration entries use the same descriptive connection summary. Existing
 endpoint-only titles are updated on setup; user-defined titles are preserved.
 
-This release uses `aioampio==2.3.0`. The library remains independent of Home
+This release uses `aioampio==2.4.0`. The library remains independent of Home
 Assistant; this integration owns diagnostic entities and availability policy.
 
 With the new API, the CAN Bridge device has global **RX frames**, **TX frames**,

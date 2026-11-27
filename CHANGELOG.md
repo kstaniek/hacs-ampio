@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0
+
 ### Breaking changes
 
 - Generate configured entity IDs from their YAML names across all platforms,
@@ -12,21 +14,23 @@
 
 ### Features
 
-- Add `light_groups.members_enabled`, defaulting to true. Setting it to false
-  creates individual member entities disabled by default while retaining group
-  control and feedback. Preserve existing registry choices and manual overrides;
-  overlapping groups use the disabled default if any containing group requests it.
-  Requires an updated aioampio build with the new configuration field.
-- Add independent `light_groups.members_visible`, defaulting to true. Set it
-  to false to register members hidden while retaining their state, history and
-  direct controls. Preserve manual visibility choices; area actions skip hidden
-  members and target the native group without extra individual writes.
+- Add M-RT temperature control and modes 0-3 for supported model-22 zones.
+  Expose Auto/Heat and Schedule/Manual/Temporary/Holiday presets with
+  feedback-driven state, validated temperature limits, and tenth-degree targets.
+- Add `light_groups.members_enabled` and `light_groups.members_visible`, both
+  defaulting to true. Members can start disabled or stay active but hidden.
+  Preserve saved registry choices; overlapping groups use the false default
+  when any containing group requests it. Area actions skip hidden members.
+- Require aioampio 2.4.0 for climate control, group-member options, corrected
+  16-bit heating temperatures, and reliable alarm command delivery.
 
-- Add M-RT temperature control and modes 0-3 when a climate-capable aioampio
-  build is installed. Expose Auto/Heat and Schedule/Manual/Temporary/Holiday
-  presets, with feedback-driven state and validated temperature limits.
-- Retain the `target_temperature` attribute for templates. Older library
-  versions and unsupported modules remain read-only; off/block stays disabled.
+### Fixes
+
+- Restore reliable Satel arming/disarming on the validated Waveshare path using
+  paced, serialized alarm transactions. The text-to-sensor status migration
+  does not change alarm command encoding.
+- Retain the `target_temperature` alias for templates. Older library versions
+  and unsupported modules remain read-only; climate off/block stays disabled.
 
 ## 0.7.0
 

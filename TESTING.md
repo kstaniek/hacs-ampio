@@ -18,7 +18,7 @@ scripts/setup --stable --venv .venv-tests --config .dev-config-tests
 
 Repeat with `aioampio==2.0.2` for fallback notification coverage and
 `aioampio==1.0.2` for legacy compatibility. This does not change the
-integration manifest, which is pinned to `aioampio==2.3.0`.
+integration manifest, which is pinned to `aioampio==2.4.0`.
 For example, install a test version with
 `uv pip install --python .venv-tests/bin/python aioampio==2.0.2`, then run pytest
 directly. Starting through `scripts/develop` restores the manifest pin.
@@ -198,8 +198,8 @@ are under `.dev-config/backups/member-visibility-dev-20261127-091429/`.
 The standalone library additionally validates masks and membership, catches
 duplicate physical outputs and resource IDs, and tests dependency cleanup.
 Run both repositories' suites with the matching local library before its release.
-The integration's new dependency pin and CI matrix require aioampio 2.3.0 to be
-published before releasing this integration.
+The integration dependency pin and CI matrix require aioampio 2.4.0 to be
+published before integration 0.8.0 is released.
 
 Relay group tests require aioampio 2.3.0 and skip on older compatibility libraries.
 They cover binary-only HA controls, a sparse mask selecting outputs 3, 5, and 6,
@@ -298,3 +298,31 @@ HA state without calling the monitor or advancing time. The aioampio 2.0.2
 compatibility job instead detects changed counts in the existing one-second
 availability check. Tests cover both paths, unchanged-value suppression,
 offline readability, subscription cleanup, and identity preservation on reload.
+
+## Alarm command delivery
+
+`tests/test_alarm_control.py` exercises zone-3 arm/disarm actions through HA
+with the migrated read-only command-status sensor present. It checks all nine
+fragments, their order and checksum, the zone-only mask `0x04`, independent
+response feedback, and the absence of optimistic state changes. Library tests
+check 10 ms gaps, serialized concurrent alarm transactions, and stopping after a
+failed frame while releasing the transaction lock. Full validation passed with
+502 library tests and 292 integration tests on both stable and development HA.
+
+Live acceptance on 2026-11-27 used only zone 3 on module `00001ecc`. An unpaced
+nine-frame burst with approximately 0.3 ms gaps produced no response and no
+arming feedback. The identical payload and PIN with 10 ms gaps returned `OK`,
+updated the status sensor, and entered `arming`. A paced disarm returned the
+zone to disarmed. Zones 1 and 2 remained disarmed. The PIN and its encoded bytes
+are omitted from evidence logs. This demonstrates a timing dependency; it does
+not identify which historical commit first exposed it. The alarm encoder is
+unchanged between aioampio 1.0.2 and 2.3.0.
+
+When the user subsequently reported arming and failed disarming through the old
+running dev build, testing stopped and a paced disarm confirmed `armed=false`,
+`arming=false` and `arming_10s=false`. The tested fix was then installed as a
+local wheel and dev HA restarted. Further arming tests were cancelled; a fully
+armed-state acceptance test was not performed. Evidence is under
+`.dev-config/backups/alarm-zone3-20261127-093131/`; the source snapshot, wheel,
+package/registry backups and installation receipt are under
+`.dev-config/backups/alarm-pacing-implementation-20261127-093717/`.
