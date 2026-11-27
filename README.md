@@ -86,14 +86,20 @@ continues to receive member feedback. Members can be enabled manually in HA.
 For overlapping groups, a member defaults to disabled if any containing group
 sets `members_enabled: false`. Existing registry choices are preserved; changing
 the YAML does not disable members that were already registered as enabled.
-`members_visible` independently controls initial visibility and also defaults to
-`true`. Use `members_enabled: true` and `members_visible: false` to show the group
+`members_visible` independently controls visibility and also defaults to `true`.
+It applies to already-registered members when first processed and when the YAML
+visibility setting changes. Use `members_enabled: true` and
+`members_visible: false` to show the group
 on automatic dashboards while keeping individual member state, history, direct
 controls and automations available. Hidden members are skipped by area, device
 and label targets, preventing duplicate group/member commands. Explicit dashboard
 cards can still show hidden entities. An overlapping group's `false` visibility
-default takes precedence. Existing visibility choices and manual overrides are
-preserved across reloads and YAML edits.
+setting takes precedence. With unchanged YAML visibility, manual show/hide
+choices are preserved across reloads. Explicitly user-hidden members stay hidden
+even when the YAML requests visibility. Changing to `true`, removing a member,
+or removing its group shows members hidden by the integration, unless another
+containing group still requests `false`. Entity identities and enabled states
+are preserved.
 
 Both options require aioampio 2.4.0, which is included with integration 0.8.0.
 
