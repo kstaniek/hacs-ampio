@@ -1,2 +1,2 @@
 # Lint tooling only. scripts/setup selects HA and aioampio from project metadata.
-ruff==0.15.0
+ruff==0.17.6
