@@ -68,7 +68,7 @@ async def test_status_registry_migration_preserves_preferences(
     await hass.async_block_till_done()
     new_id = registry.async_get_entity_id(Platform.SENSOR, "ampio", old.unique_id)
     new = registry.async_get(new_id)
-    assert new.entity_id == "sensor.custom_alarm_status"
+    assert new.entity_id == "sensor.test_text"
     assert new.name == "My status"
     assert new.icon == "mdi:message"
     assert new.area_id == area.id
@@ -106,8 +106,10 @@ async def test_status_migration_retains_existing_sensor(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert registry.async_get(old.entity_id) is None
-    assert registry.async_get(target.entity_id).id == target.id
-    assert registry.async_get(target.entity_id).name == "Keep my name"
+    migrated = registry.async_get(entity_id(hass, Platform.SENSOR, "text1"))
+    assert migrated.entity_id == "sensor.test_text"
+    assert migrated.id == target.id
+    assert migrated.name == "Keep my name"
 
 
 @pytest.mark.parametrize("result", [False, TimeoutError(), OSError("unreachable")])

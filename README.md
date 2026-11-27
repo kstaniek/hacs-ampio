@@ -90,12 +90,25 @@ light_groups:
 This creates an on/off light, initially `light.garaz`, using mask `0x0034`.
 It has no brightness control. Other relays on the module remain unaffected.
 
-The group's YAML `name` supplies its entity name and initial entity ID:
-`name: MLED Sofa` suggests `light.mled_sofa`, and `MLED Duża łazienka` suggests
+The YAML `name` supplies the entity name and initial entity ID for all configured
+resources: `name: Komoda` creates `light.komoda` for a light. Polish characters
+are transliterated, and empty names fall back to the stable Ampio resource ID.
+The hardware module keeps its existing device identifier.
+
+On the first startup with this naming fix, existing configured entities are
+renamed once to match their YAML names, including IDs previously based on the
+module name. Registry identities, device associations, user names, icons, areas,
+and disabled/hidden settings are retained. A Repairs notice lists the old and
+new IDs; update references in automations, scripts, and dashboards. Diagnostic
+sensor IDs are unchanged. Later manual ID changes and YAML renames do not
+trigger another migration.
+
+For groups, `name: MLED Sofa` suggests `light.mled_sofa`, and `MLED Duża łazienka` suggests
 `light.mled_duza_lazienka`. If an existing helper already owns the ID, HA adds a
-suffix such as `_2`. Existing registered IDs and user-selected names are
-preserved across reloads and YAML name changes. Replacing a helper while
-reusing its ID requires an explicit migration after verifying the native group.
+suffix such as `_2`. After the one-time migration, registered IDs and
+user-selected names are preserved across reloads and YAML name changes.
+Replacing a helper while reusing its ID requires an explicit migration after
+verifying the native group.
 
 For dimmable MLED groups, plain on restores the last successfully submitted nonzero group brightness,
 defaulting to 255 after startup. Off retains that remembered group level.

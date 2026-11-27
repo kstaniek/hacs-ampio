@@ -16,6 +16,8 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant.common import MockConfigEntry
 from pytest_homeassistant.test_util.aiohttp import AiohttpClientMocker
 
+from custom_components.ampio.const import CONF_ENTITY_NAMES_MIGRATED
+
 from .conftest import CONFIG
 from .test_integration import make_entry, setup_entry
 
@@ -237,6 +239,7 @@ async def test_reconfigure_preserves_bridge_device(
     assert entry.unique_id is None
     assert entry.title == expected_title
     assert entry.data["host"] == "192.0.2.2"
+    assert entry.data[CONF_ENTITY_NAMES_MIGRATED] is True
     after = registry.async_get_device_by_identifier(
         ("ampio", entry.entry_id), entry.entry_id
     )

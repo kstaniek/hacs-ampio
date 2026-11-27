@@ -58,8 +58,6 @@ class AmpioSwitch(AmpioBaseEntity, SwitchEntity):
         """Initialize the Ampio switch."""
         super().__init__(bridge, controller, resource)
 
-        self.name = resource.name
-
     @property
     def is_on(self) -> bool | None:
         """Return the reported power state, preserving missing feedback."""

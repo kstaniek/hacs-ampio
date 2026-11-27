@@ -65,7 +65,6 @@ class AmpioAlarm(AmpioBaseEntity, AlarmControlPanelEntity):
     ) -> None:
         """Initialize the Ampio entity."""
         super().__init__(bridge, controller, resource)
-        self.name = resource.name
 
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:

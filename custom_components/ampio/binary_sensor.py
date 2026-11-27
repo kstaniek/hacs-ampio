@@ -64,7 +64,6 @@ class AmpioBinarySensor(AmpioBaseEntity, BinarySensorEntity):
         super().__init__(bridge, controller, resource)
 
         self._attr_device_class = resource.device_class
-        self.name = resource.name
 
     @property
     def is_on(self) -> bool | None:

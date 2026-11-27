@@ -201,6 +201,7 @@ class AmpioFlowHandler(ConfigFlow, domain=DOMAIN):
             if self._endpoint_configured(unique_id, entry_id, mac):
                 return self.async_abort(reason="already_configured")
             data = {
+                **(entry.data if entry is not None else {}),
                 CONF_HOST: host,
                 CONF_PORT: port,
                 CONF_CONFIG_URL: url_str,

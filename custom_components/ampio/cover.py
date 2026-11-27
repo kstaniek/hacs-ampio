@@ -61,7 +61,6 @@ class AmpioCover(AmpioBaseEntity, CoverEntity):
     ) -> None:
         """Initialize the Ampio Cover."""
         super().__init__(bridge, controller, resource)
-        self.name = resource.name
         self._attr_device_class = resource.device_class
         self._attr_supported_features = (
             CoverEntityFeature.OPEN

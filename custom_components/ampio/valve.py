@@ -60,7 +60,6 @@ class AmpioValve(AmpioBaseEntity, ValveEntity):
     ) -> None:
         """Initialize the Ampio valve."""
         super().__init__(bridge, controller, resource)
-        self.name = resource.name
         self._attr_supported_features = (
             ValveEntityFeature.OPEN
             | ValveEntityFeature.CLOSE

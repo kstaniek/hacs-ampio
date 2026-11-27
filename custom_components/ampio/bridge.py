@@ -24,7 +24,7 @@ from .const import (
     DOMAIN,
 )
 from .device import async_setup_devices
-from .migration import async_migrate_text_entities
+from .migration import async_migrate_entity_names, async_migrate_text_entities
 from .traffic import ModuleTrafficMonitor
 from .utils import describe_can_connection
 
@@ -163,7 +163,12 @@ class AmpioBridge:
         # Older stable aioampio releases do not expose module traffic yet.
         self._start_traffic_monitor()
         await async_setup_devices(self)
-        async_migrate_text_entities(self.hass, self.config_entry)
+        async_migrate_entity_names(self)
+        async_migrate_text_entities(
+            self.hass,
+            self.config_entry,
+            resource_names={resource.id: resource.name for resource in self.api.texts},
+        )
         await self.hass.config_entries.async_forward_entry_setups(
             self.config_entry, PLATFORMS
         )

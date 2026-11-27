@@ -162,7 +162,6 @@ class AmpioSensor(AmpioBaseEntity, SensorEntity):
         super().__init__(bridge, controller, resource)
         self._attr_device_class = resource.device_class
         self._attr_native_unit_of_measurement = resource.unit_of_measurement
-        self.name = resource.name
 
     @property
     def native_value(self) -> StateType | date | datetime | Decimal:
@@ -182,7 +181,6 @@ class AmpioTextSensor(AmpioBaseEntity, SensorEntity):
     ) -> None:
         """Initialize the status sensor."""
         super().__init__(bridge, controller, resource)
-        self.name = resource.name
 
     @property
     def native_value(self) -> str | None:

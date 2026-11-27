@@ -6,11 +6,13 @@ from typing import TYPE_CHECKING, Any
 
 from aioampio.controllers.events import EventType
 from can import CanError
+from homeassistant.const import Platform
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
+from homeassistant.util import slugify
 
 from .const import DOMAIN
 
@@ -47,6 +49,12 @@ class AmpioBaseEntity(Entity):
 
         # Entity class attributes
         self._attr_unique_id = resource.id
+        self._attr_name = resource.name
+        domain = (
+            Platform.SENSOR if resource.type.value == "text" else resource.type.value
+        )
+        # Suggest a complete ID so HA does not prefix the owning module's name.
+        self.entity_id = f"{domain}.{slugify(resource.name) or slugify(resource.id)}"
         if self.device is None:
             # attach all device-less entities to the bridge itself
             self._attr_device_info = DeviceInfo(

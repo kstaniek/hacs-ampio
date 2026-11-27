@@ -152,6 +152,10 @@
     "config_required": {
       "title": "Ampio configuration required",
       "description": "The legacy YAML file for {name} could not be recovered.\n\n1. Open Settings > Devices & services > Ampio.\n2. Select Reconfigure for this entry.\n3. Enter the HTTP(S) URL of your YAML configuration and submit it.\n\nAfter validation, the integration starts using the same configuration entry."
+    },
+    "entity_names_migrated": {
+      "title": "Ampio entity IDs renamed",
+      "description": "Configured Ampio entity IDs were renamed once using their YAML names. Update references in automations, scripts, and dashboards. Registry identity, device associations, and user preferences were preserved.\n\n{renames}"
     }
   }
 }

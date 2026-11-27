@@ -152,6 +152,10 @@
     "config_required": {
       "title": "Wymagana konfiguracja Ampio",
       "description": "Nie można odzyskać starego pliku YAML dla {name}.\n\n1. Otwórz Ustawienia > Urządzenia i usługi > Ampio.\n2. Wybierz Rekonfiguruj dla tej integracji.\n3. Podaj adres HTTP(S) swojego pliku YAML i zatwierdź.\n\nPo sprawdzeniu konfiguracji integracja uruchomi się z zachowaniem istniejącego wpisu konfiguracji."
+    },
+    "entity_names_migrated": {
+      "title": "Zmieniono identyfikatory encji Ampio",
+      "description": "Identyfikatory skonfigurowanych encji Ampio zostały jednorazowo zmienione na podstawie nazw z konfiguracji YAML. Zaktualizuj odwołania w automatyzacjach, skryptach i pulpitach. Zachowano tożsamość encji, przypisania do urządzeń i ustawienia użytkownika.\n\n{renames}"
     }
   }
 }

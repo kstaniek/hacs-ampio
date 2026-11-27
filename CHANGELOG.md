@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Generate configured entity IDs from their YAML names across all platforms,
+  including individual lights. Rename existing configured entity IDs once,
+  preserving registry identity, device associations, and user preferences.
+  A Repairs notice lists the changes so references can be updated. Later
+  manual ID changes are preserved; diagnostic sensor IDs are unchanged.
+
+### Features
+
 - Add M-RT temperature control and modes 0-3 when a climate-capable aioampio
   build is installed. Expose Auto/Heat and Schedule/Manual/Temporary/Holiday
   presets, with feedback-driven state and validated temperature limits.

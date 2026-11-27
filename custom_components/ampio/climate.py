@@ -69,7 +69,6 @@ class AmpioClimate(AmpioBaseEntity, ClimateEntity):
     ) -> None:
         """Initialize Ampio Climate."""
         super().__init__(bridge, controller, resource)
-        self.name = resource.name
         self._attr_hvac_modes = []
         supports_control = getattr(controller, "supports_control", None)
         self._writable = callable(supports_control) and supports_control(resource.id)

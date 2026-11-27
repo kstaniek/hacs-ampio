@@ -123,7 +123,23 @@ migration, retaining existing cached configuration when present. Migrated bundle
 configurations have an empty configuration URL; provide a URL when reconfiguring
 them. Missing or invalid bundled configuration produces a recoverable setup error
 and a Repairs issue. Reconfiguration with a valid URL recovers the same entry;
-tests verify that its existing functional entity registry IDs survive.
+tests verify that its functional entity registry identities survive.
+
+Configured resource names generate initial entity IDs across all platforms.
+Naming tests cover Polish slugs, empty names, duplicate names and existing helper
+collisions. Existing configured IDs are renamed once, with a persisted migration
+marker and a Repairs notice listing the old and new IDs. Tests preserve registry
+UUIDs, unique IDs, device associations, user names, disabled/hidden settings and
+later manual ID choices across reloads. Diagnostic IDs and other entries are
+excluded. Reconfiguration retains the migration marker.
+
+Development acceptance on 2026-11-27 renamed 396 existing IDs, including
+`light.oswietlenie_1` to `light.komoda`. Persisted registries retained all 521
+Ampio registry UUIDs, unique IDs, device associations and user preferences;
+124 diagnostic IDs were unchanged. The recorder contained fresh post-restart
+states for all 480 enabled entities, with none unavailable. Registry backups,
+the old/new ID CSV and verification receipts are kept under the ignored
+`.dev-config/backups/entity-names-20261127-073040/` directory.
 
 Read-only `text` resources now use the sensor platform. Migration copies registry
 preferences and creates a Repairs issue naming the old and new entity IDs. An
