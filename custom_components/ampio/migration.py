@@ -8,9 +8,14 @@ from homeassistant.const import Platform
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
-from homeassistant.util import slugify
 
-from .const import CONF_ENTITY_NAMES_MIGRATED, DOMAIN
+from .const import (
+    CONF_ENTITY_NAMES_MIGRATED,
+    CONF_ENTITY_NAMES_VERSION,
+    DOMAIN,
+    ENTITY_NAMES_VERSION,
+)
+from .utils import entity_area, entity_object_id
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -25,7 +30,11 @@ if TYPE_CHECKING:
 def async_migrate_entity_names(bridge: AmpioBridge) -> None:
     """Rename configured resources once, leaving later user ID choices intact."""
     entry = bridge.config_entry
-    if entry.data.get(CONF_ENTITY_NAMES_MIGRATED):
+    previous_version = entry.data.get(
+        CONF_ENTITY_NAMES_VERSION,
+        1 if entry.data.get(CONF_ENTITY_NAMES_MIGRATED) else 0,
+    )
+    if previous_version >= ENTITY_NAMES_VERSION:
         return
     hass = bridge.hass
     registry = er.async_get(hass)
@@ -43,6 +52,10 @@ def async_migrate_entity_names(bridge: AmpioBridge) -> None:
     )
     for domain, controller in controllers:
         for resource in controller:
+            device = controller.get_device(resource.id)
+            area = entity_area(resource.area, device.area if device else None)
+            if previous_version >= 1 and not area:
+                continue
             old_id = registry.async_get_entity_id(domain, DOMAIN, resource.id)
             if old_id is None:
                 continue
@@ -51,7 +64,7 @@ def async_migrate_entity_names(bridge: AmpioBridge) -> None:
                 continue
             new_id = registry.async_get_available_entity_id(
                 domain,
-                slugify(resource.name) or slugify(resource.id),
+                entity_object_id(resource.name, resource.id, area),
                 current_entity_id=old_id,
             )
             if new_id == old_id:
@@ -62,7 +75,7 @@ def async_migrate_entity_names(bridge: AmpioBridge) -> None:
         ir.async_create_issue(
             hass,
             DOMAIN,
-            f"entity_names_migrated_{entry.entry_id}",
+            f"entity_names_migrated_v{ENTITY_NAMES_VERSION}_{entry.entry_id}",
             is_fixable=False,
             is_persistent=True,
             severity=ir.IssueSeverity.WARNING,
@@ -70,7 +83,12 @@ def async_migrate_entity_names(bridge: AmpioBridge) -> None:
             translation_placeholders={"renames": "\n".join(renames)},
         )
     hass.config_entries.async_update_entry(
-        entry, data={**entry.data, CONF_ENTITY_NAMES_MIGRATED: True}
+        entry,
+        data={
+            **entry.data,
+            CONF_ENTITY_NAMES_MIGRATED: True,
+            CONF_ENTITY_NAMES_VERSION: ENTITY_NAMES_VERSION,
+        },
     )
 
 
@@ -79,7 +97,7 @@ def async_migrate_text_entities(
     hass: HomeAssistant,
     entry: ConfigEntry,
     *,
-    resource_names: Mapping[str, str] | None = None,
+    resource_object_ids: Mapping[str, str] | None = None,
 ) -> None:
     """Copy preferences to status sensors before removing obsolete text entities."""
     registry = er.async_get(hass)
@@ -89,10 +107,8 @@ def async_migrate_text_entities(
         target_id = registry.async_get_entity_id(Platform.SENSOR, DOMAIN, old.unique_id)
         if target_id is None:
             object_id = old.entity_id.partition(".")[2]
-            if resource_names is not None and old.unique_id in resource_names:
-                object_id = slugify(resource_names[old.unique_id]) or slugify(
-                    old.unique_id
-                )
+            if resource_object_ids is not None and old.unique_id in resource_object_ids:
+                object_id = resource_object_ids[old.unique_id]
             target = registry.async_get_or_create(
                 Platform.SENSOR,
                 DOMAIN,

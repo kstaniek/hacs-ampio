@@ -2,7 +2,24 @@
 
 from __future__ import annotations
 
+from homeassistant.util import slugify
+
 from .const import DEFAULT_CAN_CHANNEL, DEFAULT_CAN_INTERFACE
+
+
+def entity_area(area: str | None, device_area: str | None = None) -> str | None:
+    """Prefer the resource's YAML area, falling back to its owning module's area."""
+    return next(
+        (value.strip() for value in (area, device_area) if value and value.strip()),
+        None,
+    )
+
+
+def entity_object_id(name: str, resource_id: str, area: str | None = None) -> str:
+    """Prefix the configured entity name with its resolved YAML area, if distinct."""
+    object_id = slugify(name) or slugify(resource_id)
+    area_id = slugify(area.strip()) if area and area.strip() else ""
+    return f"{area_id}_{object_id}" if area_id and area_id != object_id else object_id
 
 
 def describe_can_connection(

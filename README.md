@@ -113,18 +113,34 @@ It has no brightness control. Other relays on the module remain unaffected.
 The YAML `name` supplies the entity name and initial entity ID for all configured
 resources: `name: Komoda` creates `light.komoda` for a light. Polish characters
 are transliterated, and empty names fall back to the stable Ampio resource ID.
-The hardware module keeps its existing device identifier.
+An explicit resource `area: Salon` prefixes that ID, giving `light.salon_komoda`.
+When the resource has no area (or only whitespace), use the owning module's YAML
+area as a fallback. For example, an MSENS module with `area: Salon` and a sensor
+named `Temperatura` creates `sensor.salon_temperatura`. An explicit sensor or
+group area takes priority over the module's area.
+When the area and name normalize to the same value, use it only once:
+`area: Salon` and `name: Salon` give `light.salon`. User-selected HA area overrides
+do not supply this prefix. The hardware module keeps its existing
+device identifier, and the entity's unique ID remains its CAN/resource ID.
+
+For example, CAN ID `0x1b88` and resource `id: climate3` produce unique ID
+`00001b88_climate3`. Native groups use `00001b88_light_group_<group id>`.
+Names and areas do not change these identities; keep CAN and resource IDs stable
+to retain the same HA registry entries.
 
 On the first startup with this naming fix, existing configured entities are
-renamed once to match their YAML names, including IDs previously based on the
-module name. Registry identities, device associations, user names, icons, areas,
+renamed once to match their YAML names and resolved areas, including IDs
+previously based on the module name. Upgrading from 0.8.0 runs a second one-time
+migration for resources with an explicit or module area; the earlier Repairs list remains
+available. Registry identities, device associations, user names, icons, areas,
 and disabled/hidden settings are retained. A Repairs notice lists the old and
 new IDs; update references in automations, scripts, and dashboards. Diagnostic
-sensor IDs are unchanged. Later manual ID changes and YAML renames do not
+sensor IDs are unchanged. Later manual ID changes and YAML name/area edits do not
 trigger another migration.
 
-For groups, `name: MLED Sofa` suggests `light.mled_sofa`, and `MLED Duża łazienka` suggests
-`light.mled_duza_lazienka`. If an existing helper already owns the ID, HA adds a
+For groups without an entity or module area, `name: MLED Sofa` suggests `light.mled_sofa`,
+and `MLED Duża łazienka` suggests `light.mled_duza_lazienka`.
+If an existing helper already owns the ID, HA adds a
 suffix such as `_2`. After the one-time migration, registered IDs and
 user-selected names are preserved across reloads and YAML name changes.
 Replacing a helper while reusing its ID requires an explicit migration after

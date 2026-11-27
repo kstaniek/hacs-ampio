@@ -26,7 +26,7 @@ from .const import (
 from .device import async_setup_devices
 from .migration import async_migrate_entity_names, async_migrate_text_entities
 from .traffic import ModuleTrafficMonitor
-from .utils import describe_can_connection
+from .utils import describe_can_connection, entity_area, entity_object_id
 
 PLATFORMS = [
     Platform.LIGHT,
@@ -167,7 +167,19 @@ class AmpioBridge:
         async_migrate_text_entities(
             self.hass,
             self.config_entry,
-            resource_names={resource.id: resource.name for resource in self.api.texts},
+            resource_object_ids={
+                resource.id: entity_object_id(
+                    resource.name,
+                    resource.id,
+                    entity_area(
+                        resource.area,
+                        device.area
+                        if (device := self.api.texts.get_device(resource.id))
+                        else None,
+                    ),
+                )
+                for resource in self.api.texts
+            },
         )
         await self.hass.config_entries.async_forward_entry_setups(
             self.config_entry, PLATFORMS

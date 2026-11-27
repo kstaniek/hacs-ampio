@@ -12,9 +12,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
-from homeassistant.util import slugify
 
 from .const import DOMAIN
+from .utils import entity_area, entity_object_id
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable
@@ -54,7 +54,10 @@ class AmpioBaseEntity(Entity):
             Platform.SENSOR if resource.type.value == "text" else resource.type.value
         )
         # Suggest a complete ID so HA does not prefix the owning module's name.
-        self.entity_id = f"{domain}.{slugify(resource.name) or slugify(resource.id)}"
+        area = entity_area(resource.area, self.device.area if self.device else None)
+        self.entity_id = (
+            f"{domain}.{entity_object_id(resource.name, resource.id, area)}"
+        )
         if self.device is None:
             # attach all device-less entities to the bridge itself
             self._attr_device_info = DeviceInfo(

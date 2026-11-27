@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.9.0
+
+### Breaking changes
+
+- Prefix configured entity IDs with their YAML area, falling back to the owning
+  module's area when absent or blank. Matching normalized area and entity names
+  appear only once. Upgrade existing IDs once while preserving unique IDs,
+  registry preferences, and the earlier Repairs map. A new Repairs notice lists
+  renamed IDs so automations, scripts, and dashboards can be updated.
+
+### Validation
+
+- Pass 325 integration tests, including area precedence, module fallbacks,
+  native light groups, MSENS migration, and preservation of registry identities
+  and preferences. Keep the runtime dependency at aioampio 2.4.0.
+
 ## 0.8.0
 
 ### Breaking changes

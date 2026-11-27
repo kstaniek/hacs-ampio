@@ -1,6 +1,7 @@
 """Regressions for lifecycle, registry ownership, and transport errors."""
 
 import asyncio
+from copy import deepcopy
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -44,12 +45,22 @@ async def test_status_is_a_read_only_sensor(
     apis[0].send.assert_not_awaited()
 
 
+@pytest.mark.parametrize(
+    ("yaml_area", "expected_id"),
+    [(None, "sensor.test_room_test_text"), ("Salon", "sensor.salon_test_text")],
+)
 async def test_status_registry_migration_preserves_preferences(
-    hass: HomeAssistant, apis: list[AmpioBridge]
+    hass: HomeAssistant,
+    apis: list[AmpioBridge],
+    yaml_area: str | None,
+    expected_id: str,
 ) -> None:
     """Preserve customization while explaining the unavoidable domain change."""
     entry = make_entry()
+    data = deepcopy(dict(entry.data))
+    data["ampio_config"]["devices"][0]["texts"][0]["area"] = yaml_area
     entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(entry, data=data)
     registry = er.async_get(hass)
     area = ar.async_get(hass).async_create("User area")
     old = registry.async_get_or_create(
@@ -68,7 +79,7 @@ async def test_status_registry_migration_preserves_preferences(
     await hass.async_block_till_done()
     new_id = registry.async_get_entity_id(Platform.SENSOR, "ampio", old.unique_id)
     new = registry.async_get(new_id)
-    assert new.entity_id == "sensor.test_text"
+    assert new.entity_id == expected_id
     assert new.name == "My status"
     assert new.icon == "mdi:message"
     assert new.area_id == area.id
@@ -107,7 +118,7 @@ async def test_status_migration_retains_existing_sensor(
     await hass.async_block_till_done()
     assert registry.async_get(old.entity_id) is None
     migrated = registry.async_get(entity_id(hass, Platform.SENSOR, "text1"))
-    assert migrated.entity_id == "sensor.test_text"
+    assert migrated.entity_id == "sensor.test_room_test_text"
     assert migrated.id == target.id
     assert migrated.name == "Keep my name"
 

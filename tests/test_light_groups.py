@@ -123,12 +123,40 @@ async def test_setup_retains_members(
     assert state.state == "unknown"
     assert state.attributes["supported_color_modes"] == ["brightness"]
     assert "entity_id" not in state.attributes
-    assert group.entity_id == "light.mled_sofa"
+    assert group.entity_id == "light.living_room_mled_sofa"
     assert group.original_name == "MLED Sofa"
     assert (
         registry.async_get(entity_id(hass, "light", "light_group_kitchen")).entity_id
         == "light.mled_kitchen"
     )
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("MLED Kitchen", "light.silownia_mled_kitchen"),
+        ("Siłownia", "light.silownia"),
+    ],
+)
+async def test_group_area_falls_back_to_module(
+    hass: HomeAssistant, apis: list[AmpioBridge], name: str, expected: str
+) -> None:
+    """Use module areas for groups and members while honoring a group's own area."""
+    entry = make_group_entry()
+    device = entry.data["ampio_config"]["devices"][0]
+    device["area"] = "Siłownia"
+    device["light_groups"][0]["name"] = name
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entity_id(hass, "light", "light_group_kitchen") == expected
+    assert entity_id(hass, "light", "light1") == "light.silownia_mled_1"
+    assert entity_id(hass, "light", "light_group_sofa") == "light.living_room_mled_sofa"
+    assert (
+        er.async_get(hass).async_get(expected).unique_id
+        == "00000123_light_group_kitchen"
+    )
+    apis[0].send.assert_not_awaited()
 
 
 @pytest.mark.parametrize(
@@ -351,7 +379,10 @@ async def test_group_name_collision_preserves_existing_helper(
     """Suggest the YAML name without claiming an existing helper's entity ID."""
     registry = er.async_get(hass)
     helper = registry.async_get_or_create(
-        "light", "group", "existing-sofa-helper", suggested_object_id="mled_sofa"
+        "light",
+        "group",
+        "existing-sofa-helper",
+        suggested_object_id="living_room_mled_sofa",
     )
     hass.states.async_set(helper.entity_id, "off", {"friendly_name": "MLED Sofa"})
     entry = make_group_entry()
@@ -359,7 +390,7 @@ async def test_group_name_collision_preserves_existing_helper(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     sofa = entity_id(hass, "light", "light_group_sofa")
-    assert sofa == "light.mled_sofa_2"
+    assert sofa == "light.living_room_mled_sofa_2"
     assert registry.async_get(helper.entity_id) == helper
     assert hass.states.get(helper.entity_id).attributes["friendly_name"] == "MLED Sofa"
     apis[0].send.assert_not_awaited()
@@ -368,8 +399,8 @@ async def test_group_name_collision_preserves_existing_helper(
 @pytest.mark.parametrize(
     ("name", "expected_id"),
     [
-        ("MLED Duża łazienka", "light.mled_duza_lazienka"),
-        ("", "light.00000123_light_group_sofa"),
+        ("MLED Duża łazienka", "light.living_room_mled_duza_lazienka"),
+        ("", "light.living_room_00000123_light_group_sofa"),
     ],
 )
 async def test_group_yaml_name_generates_valid_entity_id(

@@ -193,7 +193,7 @@ async def test_recover_missing_legacy_config(  # noqa: PLR0913
     assert result["reason"] == "reconfigure_successful"
     assert entry.state == ConfigEntryState.LOADED
     assert entry.entry_id == original_id
-    renamed = registry.async_get("sensor.test_temperature")
+    renamed = registry.async_get("sensor.test_room_test_temperature")
     assert renamed.id == old_sensor.id
     assert renamed.unique_id == old_sensor.unique_id
     assert issues.async_get_issue("ampio", issue_id) is None

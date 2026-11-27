@@ -155,7 +155,7 @@
     },
     "entity_names_migrated": {
       "title": "Ampio entity IDs renamed",
-      "description": "Configured Ampio entity IDs were renamed once using their YAML names. Update references in automations, scripts, and dashboards. Registry identity, device associations, and user preferences were preserved.\n\n{renames}"
+      "description": "Configured Ampio entity IDs were renamed once using their YAML names and areas. Update references in automations, scripts, and dashboards. Registry identity, device associations, and user preferences were preserved.\n\n{renames}"
     }
   }
 }

@@ -125,10 +125,19 @@ them. Missing or invalid bundled configuration produces a recoverable setup erro
 and a Repairs issue. Reconfiguration with a valid URL recovers the same entry;
 tests verify that its functional entity registry identities survive.
 
-Configured resource names generate initial entity IDs across all platforms.
-Naming tests cover Polish slugs, empty names, duplicate names and existing helper
-collisions. Existing configured IDs are renamed once, with a persisted migration
-marker and a Repairs notice listing the old and new IDs. Tests preserve registry
+Configured resource names and resolved YAML areas generate initial entity IDs
+across all platforms. Naming tests cover Polish slugs, equal normalized name/area
+values without duplication, empty names, duplicate names, and existing helper
+collisions. An explicit resource area takes priority; otherwise, the owning
+module's area supplies the prefix. Blank areas fall back as well. User-selected
+HA areas do not affect the prefix. Tests cover all configured platforms, native
+groups, legacy text-to-sensor migration, and two MSENS modules with repeated
+sensor names. MSENS migration preserves registry UUIDs, unique IDs, device
+associations, user areas, names, and disabled/hidden preferences across reloads.
+Existing configured IDs are renamed once per naming version, with a persisted
+migration marker and a Repairs notice listing the old and new IDs. Upgrading
+from the 0.8.0 naming migration preserves its earlier Repairs map and migrates
+only resources with an explicit or module area. Tests preserve registry
 UUIDs, unique IDs, device associations, user names, disabled/hidden settings and
 later manual ID choices across reloads. Diagnostic IDs and other entries are
 excluded. Reconfiguration retains the migration marker.

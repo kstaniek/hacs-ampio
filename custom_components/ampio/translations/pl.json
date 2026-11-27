@@ -155,7 +155,7 @@
     },
     "entity_names_migrated": {
       "title": "Zmieniono identyfikatory encji Ampio",
-      "description": "Identyfikatory skonfigurowanych encji Ampio zostały jednorazowo zmienione na podstawie nazw z konfiguracji YAML. Zaktualizuj odwołania w automatyzacjach, skryptach i pulpitach. Zachowano tożsamość encji, przypisania do urządzeń i ustawienia użytkownika.\n\n{renames}"
+      "description": "Identyfikatory skonfigurowanych encji Ampio zostały jednorazowo zmienione na podstawie nazw i obszarów z konfiguracji YAML. Zaktualizuj odwołania w automatyzacjach, skryptach i pulpitach. Zachowano tożsamość encji, przypisania do urządzeń i ustawienia użytkownika.\n\n{renames}"
     }
   }
 }
