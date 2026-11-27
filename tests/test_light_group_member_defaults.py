@@ -165,10 +165,10 @@ async def test_manual_member_choices_survive_reload(
 
 
 @pytest.mark.parametrize("option", ["members_enabled", "members_visible"])
-async def test_reconfiguring_default_keeps_existing_member_choices(
+async def test_reconfiguring_member_defaults(
     hass: HomeAssistant, apis: list[AmpioBridge], option: str
 ) -> None:
-    """Keep saved choices when the initial registration default changes."""
+    """Apply visibility edits while enabled flags remain registration defaults."""
     entry = make_group_entry()
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -183,8 +183,126 @@ async def test_reconfiguring_default_keeps_existing_member_choices(
     reloaded = er.async_get(hass).async_get(target)
     assert reloaded.id == original.id
     assert reloaded.disabled_by is None
-    assert reloaded.hidden_by is None
+    assert reloaded.hidden_by == (
+        er.RegistryEntryHider.INTEGRATION if option == "members_visible" else None
+    )
     assert hass.states.get(target) is not None
+    assert all(not api.send.await_count for api in apis)
+
+
+async def test_visibility_applies_to_previously_registered_members(
+    hass: HomeAssistant, apis: list[AmpioBridge]
+) -> None:
+    """Hide existing members without replacing entities or disabling them."""
+    entry = make_group_entry()
+    entry.data["ampio_config"]["devices"][0]["light_groups"][1]["members_visible"] = (
+        False
+    )
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    old = registry.async_get_or_create(
+        "light",
+        "ampio",
+        "00000123_light11",
+        config_entry=entry,
+        suggested_object_id="my_existing_member",
+    )
+    old = registry.async_update_entity(old.entity_id, name="My member", icon="mdi:star")
+    user_hidden = registry.async_get_or_create(
+        "light",
+        "ampio",
+        "00000123_light12",
+        config_entry=entry,
+        hidden_by=er.RegistryEntryHider.USER,
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    member = registry.async_get(entity_id(hass, "light", "light11"))
+    assert member.id == old.id
+    assert member.unique_id == old.unique_id
+    assert member.name == old.name
+    assert member.icon == old.icon
+    assert member.disabled_by is None
+    assert member.hidden_by == er.RegistryEntryHider.INTEGRATION
+    assert hass.states.get(member.entity_id) is not None
+    assert (
+        registry.async_get(entity_id(hass, "light", "light12")).hidden_by
+        == user_hidden.hidden_by
+    )
+    assert registry.async_get(entity_id(hass, "light", "light1")).hidden_by is None
+    assert (
+        registry.async_get(entity_id(hass, "light", "light_group_sofa")).hidden_by
+        is None
+    )
+    apis[0].send.assert_not_awaited()
+
+
+@pytest.mark.parametrize("change", ["visible", "membership", "group_removed"])
+async def test_visibility_edit_unhides_only_managed_members(
+    hass: HomeAssistant, apis: list[AmpioBridge], change: str
+) -> None:
+    """Show integration-hidden members when YAML changes and retain user hiding."""
+    entry = make_group_entry()
+    entry.data["ampio_config"]["devices"][0]["light_groups"][1]["members_visible"] = (
+        False
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    managed_id = entity_id(hass, "light", "light11")
+    manual_id = entity_id(hass, "light", "light12")
+    original = registry.async_get(managed_id)
+    registry.async_update_entity(manual_id, hidden_by=er.RegistryEntryHider.USER)
+    updated = deepcopy(dict(entry.data))
+    groups = updated["ampio_config"]["devices"][0]["light_groups"]
+    if change == "visible":
+        groups[1]["members_visible"] = True
+    elif change == "membership":
+        groups[1]["members"] = ["light13", "light14", "light15", "light16"]
+    else:
+        groups.pop(1)
+    hass.config_entries.async_update_entry(entry, data=updated)
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert registry.async_get(managed_id).id == original.id
+    assert registry.async_get(managed_id).hidden_by is None
+    assert registry.async_get(manual_id).hidden_by == er.RegistryEntryHider.USER
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert registry.async_get(managed_id).hidden_by is None
+    assert registry.async_get(manual_id).hidden_by == er.RegistryEntryHider.USER
+    assert all(not api.send.await_count for api in apis)
+
+
+async def test_visibility_changes_respect_remaining_overlapping_groups(
+    hass: HomeAssistant, apis: list[AmpioBridge]
+) -> None:
+    """Keep a shared member hidden until every containing group allows visibility."""
+    entry = make_group_entry()
+    groups = entry.data["ampio_config"]["devices"][0]["light_groups"]
+    groups[1]["members_visible"] = False
+    groups[2]["members_visible"] = False
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    shared = entity_id(hass, "light", "light16")
+    original = registry.async_get(shared)
+    updated = deepcopy(dict(entry.data))
+    updated["ampio_config"]["devices"][0]["light_groups"][1]["members_visible"] = True
+    hass.config_entries.async_update_entry(entry, data=updated)
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert registry.async_get(shared).hidden_by == er.RegistryEntryHider.INTEGRATION
+    assert registry.async_get(entity_id(hass, "light", "light11")).hidden_by is None
+    updated = deepcopy(dict(entry.data))
+    updated["ampio_config"]["devices"][0]["light_groups"].pop(2)
+    hass.config_entries.async_update_entry(entry, data=updated)
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert registry.async_get(shared).id == original.id
+    assert registry.async_get(shared).hidden_by is None
     assert all(not api.send.await_count for api in apis)
 
 

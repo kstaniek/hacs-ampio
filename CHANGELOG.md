@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.9.1
+
+- Apply `light_groups.members_visible` to existing members and YAML visibility
+  changes. Show integration-hidden members when the setting becomes true or
+  their group membership ends, respecting other overlapping groups. Preserve
+  manual visibility choices across reloads with unchanged YAML, explicit user
+  hiding, entity identities, and enabled states.
+
 ## 0.9.0
 
 ### Breaking changes

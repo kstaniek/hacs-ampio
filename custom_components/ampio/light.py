@@ -19,7 +19,7 @@ from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import color as color_util
 
-from .const import DOMAIN
+from .const import CONF_MEMBER_VISIBILITY_DEFAULTS, DOMAIN
 from .entity import AmpioBaseEntity
 
 if TYPE_CHECKING:
@@ -43,6 +43,7 @@ async def async_setup_entry(
     bridge = config_entry.runtime_data
     api = bridge.api
     controller: LightsController = api.lights
+    _async_sync_member_visibility(bridge, controller)
 
     def make_light_entity(resource: Light) -> AmpioLight:
         """Expose native masked groups alongside their ordinary members."""
@@ -60,6 +61,42 @@ async def async_setup_entry(
     config_entry.async_on_unload(
         controller.subscribe(async_add_light, event_filter=EventType.RESOURCE_ADDED)
     )
+
+
+@callback
+def _async_sync_member_visibility(
+    bridge: AmpioBridge, controller: LightsController
+) -> None:
+    """Apply YAML visibility changes once while retaining later registry choices."""
+    entry = bridge.config_entry
+    previous = entry.data.get(CONF_MEMBER_VISIBILITY_DEFAULTS, {})
+    visibility: dict[str, bool] = {}
+    for group in controller:
+        for member in getattr(group, "members", ()):
+            visibility[member] = visibility.get(member, True) and getattr(
+                group, "members_visible", True
+            )
+    registry = er.async_get(bridge.hass)
+    for member in previous.keys() | visibility.keys():
+        visible = visibility.get(member, True)
+        if previous.get(member) == visible or controller.get(member) is None:
+            continue
+        entity_id = registry.async_get_entity_id(Platform.LIGHT, DOMAIN, member)
+        if entity_id is None:
+            continue
+        registered = registry.async_get(entity_id)
+        if (
+            registered.config_entry_id != entry.entry_id
+            or registered.hidden_by == er.RegistryEntryHider.USER
+        ):
+            continue
+        hidden_by = None if visible else er.RegistryEntryHider.INTEGRATION
+        if registered.hidden_by != hidden_by:
+            registry.async_update_entity(entity_id, hidden_by=hidden_by)
+    if previous != visibility:
+        bridge.hass.config_entries.async_update_entry(
+            entry, data={**entry.data, CONF_MEMBER_VISIBILITY_DEFAULTS: visibility}
+        )
 
 
 class AmpioLight(AmpioBaseEntity, LightEntity):

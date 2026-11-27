@@ -192,9 +192,14 @@ MLED and relay groups, disabled members remaining registered, hidden members
 continuing to report state and accept direct controls, continued group feedback,
 single-frame group commands, overlap precedence independent of group order, and
 manual enable/disable/show/hide choices surviving reloads. An area command with
-hidden members sends only the native group mask. Changing either default does
-not override an existing registry choice. Published libraries without the new
-fields skip these cases.
+hidden members sends only the native group mask. Changing `members_enabled`
+does not override an existing enabled state. Visibility tests additionally cover
+previously registered visible members, YAML visibility edits in both directions,
+group/member removal, and overlap precedence after edits. The integration stores
+the last applied visibility settings so unchanged YAML preserves later manual
+show/hide choices. Explicit user hiding always survives. Tests retain registry
+UUIDs, unique IDs, names, icons, and enabled states. Published libraries without
+the new fields skip these cases.
 
 The development preview on 2026-11-27 loaded all nine local YAML groups with
 `members_enabled: true` and `members_visible: false`. It restored the 59 members
