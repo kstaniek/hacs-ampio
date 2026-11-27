@@ -226,6 +226,15 @@ leave a running entry unchanged. Platform contract tests cover unknown feedback,
 partial alarm flags, cover/valve position and motion, toggle decisions, and
 rejection of unsupported climate controls.
 
+Climate-capable library development adds `tests/test_climate_control.py` in both
+repositories. The library tests compare setpoints and modes against captured CAN
+vectors, validate limits and addressing, and exercise serialization and transport
+failures. Adapter tests pass real raw frames through the decoder and controller,
+exercise HA services and Fahrenheit conversion, reject OFF/block, and verify
+that commands do not fabricate feedback. These tests require the local library;
+they are skipped for older published wheels, whose read-only compatibility
+remains covered by the existing entity-contract tests.
+
 HTTP tests use HA's authenticated configuration endpoints to serialize manual,
 reconfiguration, discovery, and error forms. They also submit reconfiguration to
 refresh cached YAML. These tests catch validators that work in Python but cannot

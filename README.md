@@ -154,11 +154,59 @@ is disarmed; disarmed requires explicit armed-state feedback. Covers and valves
 report position and motion through Home Assistant's standard entity properties,
 including the toggle and stop actions.
 
-Climate entities currently provide read-only current temperature and heating
-activity. HVAC mode remains unknown until explicit enabled/disabled feedback is
-received; an idle heating zone is not treated as switched off. Temperature, HVAC
-mode, and on/off controls are unavailable because `aioampio` does not implement
-these commands yet. The target-temperature control is also hidden.
+## Climate control
+
+The adapter enables temperature and operating-mode control for M-RT modules
+(model 22) when the installed aioampio build provides the validated climate
+controller. The manifest still pins the published `aioampio==2.3.0`, which
+remains read-only. The climate-capable library is currently a local development
+change: use `scripts/develop --aioampio ../aioampio` to develop with it. A library
+release and manifest update are required to distribute writable controls.
+
+The writer requires exactly one `heating.N` state, for zone 1-16. A configured
+`zone.N` state must agree. Commands use that topic's channel, independently of
+the resource ID's suffix. Other module models and older library versions retain
+the read-only behavior. Entity IDs and registry identities are preserved.
+
+| Control | Ampio mode | Behavior |
+| --- | --- | --- |
+| Auto / Schedule preset | 0 | Calendar operation |
+| Heat / Manual preset | 1 | Manual operation |
+| Temporary preset | 2 | Temporary manual operation |
+| Holiday preset | 3 | Holiday operation |
+
+Setting a temperature alone makes the module select temporary mode 2. A
+`climate.set_temperature` call that also specifies `hvac_mode: auto` or `heat`
+writes the setpoint first, then selects the requested mode. OFF, on/off services,
+cooling, and block mode 4 are not exposed because they have not been validated.
+
+Supported zones expose the normal thermostat target control. The additional
+`target_temperature` attribute remains available for existing templates and for
+read-only zones. It uses the same display unit and precision as current
+temperature and is `null` before feedback arrives. Operating mode and presets
+also remain unknown until reported; commands do not change state optimistically.
+Heating activity follows the reported heating flag, independently of the
+calendar/manual mode and the zone summary.
+
+Commands round to the nearest tenth Celsius, with half-tenths rounded up.
+Application limits default to 7-35 degrees Celsius; these are guardrails, not
+discovered hardware limits. With the climate-capable library, set narrower
+limits in the climate's YAML definition when appropriate:
+
+```yaml
+climates:
+  - id: climate3
+    name: Living room heating
+    states: [heating.3, zone.3]
+    min_temperature: 18.0
+    max_temperature: 26.0
+```
+
+Limits must be ordered, non-negative, no higher than 100, and use tenth-degree
+precision. The writer rejects non-finite temperatures, values outside those
+limits, unsupported modes, and ambiguous zone mappings before sending frames.
+The library remains independent of Home Assistant. The captured protocol and
+its validation limits are documented in [Heating CAN control](docs/heating-can-control.md).
 
 ## Module traffic diagnostics
 

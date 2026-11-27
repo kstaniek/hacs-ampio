@@ -83,6 +83,20 @@
       "last_rx_at": {
         "name": "Last frame received"
       }
+    },
+    "climate": {
+      "ampio_climate": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "schedule": "Schedule",
+              "manual": "Manual",
+              "temporary": "Until next schedule",
+              "holiday": "Holiday"
+            }
+          }
+        }
+      }
     }
   },
   "options": {
@@ -119,6 +133,15 @@
     },
     "configuration_required": {
       "message": "No cached Ampio configuration is available. Open Reconfigure and provide its YAML URL."
+    },
+    "climate_control_unavailable": {
+      "message": "Climate control is unavailable for this module or library version."
+    },
+    "invalid_climate_mode": {
+      "message": "Only auto and heat HVAC modes are supported."
+    },
+    "invalid_climate_preset": {
+      "message": "Unsupported Ampio climate preset."
     }
   },
   "issues": {

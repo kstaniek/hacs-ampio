@@ -83,6 +83,20 @@
       "last_rx_at": {
         "name": "Ostatnia odebrana ramka"
       }
+    },
+    "climate": {
+      "ampio_climate": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "schedule": "Harmonogram",
+              "manual": "Ręczny",
+              "temporary": "Do zmiany harmonogramu",
+              "holiday": "Wyjazd"
+            }
+          }
+        }
+      }
     }
   },
   "options": {
@@ -119,6 +133,15 @@
     },
     "configuration_required": {
       "message": "Brak zapisanej konfiguracji Ampio. Otwórz rekonfigurację i podaj adres URL pliku YAML."
+    },
+    "climate_control_unavailable": {
+      "message": "Sterowanie ogrzewaniem jest niedostępne dla tego modułu lub wersji biblioteki."
+    },
+    "invalid_climate_mode": {
+      "message": "Obsługiwane tryby HVAC to auto i heat."
+    },
+    "invalid_climate_preset": {
+      "message": "Nieobsługiwany tryb pracy ogrzewania Ampio."
     }
   },
   "issues": {

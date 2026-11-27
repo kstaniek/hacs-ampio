@@ -9,6 +9,11 @@ from aioampio import AmpioBridge
 from homeassistant.const import STATE_UNKNOWN, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.util.unit_system import (
+    METRIC_SYSTEM,
+    US_CUSTOMARY_SYSTEM,
+    UnitSystem,
+)
 from pytest_homeassistant.common import MockConfigEntry
 
 from .test_integration import entity_id, make_entry, setup_entry
@@ -225,17 +230,54 @@ async def test_climate_feedback_is_read_only(
 ) -> None:
     """An idle heating zone keeps its mode, while unknown mode remains unknown."""
     await setup_entry(hass)
+    target = entity_id(hass, Platform.CLIMATE, "climate1")
+    assert hass.states.get(target).attributes["target_temperature"] is None
     await apis[0].state_store.set(
         "00000123.heating.1",
         {"current_temperature": 20, "target_temperature": 22, **report},
     )
     await hass.async_block_till_done()
-    state = hass.states.get(entity_id(hass, Platform.CLIMATE, "climate1"))
+    state = hass.states.get(target)
     assert state.state == mode
     assert state.attributes["hvac_action"] == action
     assert state.attributes["current_temperature"] == 20
+    assert state.attributes["target_temperature"] == 22
+    assert "temperature" not in state.attributes
     assert state.attributes["hvac_modes"] == []
     assert state.attributes["supported_features"] == 0
+    apis[0].send.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("units", "expected", "zero_expected"),
+    [(METRIC_SYSTEM, 22.3, 0), (US_CUSTOMARY_SYSTEM, 72, 32)],
+)
+async def test_climate_target_attribute_updates(
+    hass: HomeAssistant,
+    apis: list[AmpioBridge],
+    units: UnitSystem,
+    expected: float,
+    zero_expected: float,
+) -> None:
+    """Convert the read-only target like current temperature and update zero."""
+    hass.config.units = units
+    await setup_entry(hass)
+    target = entity_id(hass, Platform.CLIMATE, "climate1")
+    await apis[0].state_store.set(
+        "00000123.heating.1",
+        {"current_temperature": 22.3, "target_temperature": 22.3},
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get(target)
+    assert state.attributes["target_temperature"] == expected
+    assert state.attributes["current_temperature"] == expected
+    await apis[0].state_store.set("00000123.heating.1", {"target_temperature": 0})
+    await hass.async_block_till_done()
+    state = hass.states.get(target)
+    assert state.attributes["target_temperature"] == zero_expected
+    assert state.attributes["current_temperature"] == expected
+    assert state.attributes["supported_features"] == 0
+    assert "temperature" not in state.attributes
     apis[0].send.assert_not_awaited()
 
 
@@ -253,6 +295,8 @@ async def test_climate_rejects_unsupported_actions(
 ) -> None:
     """HA rejects unavailable controls before reaching unimplemented library code."""
     await setup_entry(hass)
+    await apis[0].state_store.set("00000123.heating.1", {"target_temperature": 22})
+    await hass.async_block_till_done()
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
             Platform.CLIMATE,

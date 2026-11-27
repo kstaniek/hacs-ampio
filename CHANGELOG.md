@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add M-RT temperature control and modes 0-3 when a climate-capable aioampio
+  build is installed. Expose Auto/Heat and Schedule/Manual/Temporary/Holiday
+  presets, with feedback-driven state and validated temperature limits.
+- Retain the `target_temperature` attribute for templates. Older library
+  versions and unsupported modules remain read-only; off/block stays disabled.
+
 ## 0.7.0
 
 - Add native on/off groups for MREL8S relay modules (model 4), using one masked
