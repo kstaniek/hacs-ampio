@@ -177,6 +177,24 @@ payloads, independent indexed member commands, individual feedback propagation,
 overlapping membership, unknown/mixed states, shared brightness memory, transport
 failure, command ordering, module availability, and registry/area preservation.
 
+Member-default tests require the `members_enabled` and `members_visible` fields
+in an updated aioampio build. They cover independent omitted/true/false values on
+MLED and relay groups, disabled members remaining registered, hidden members
+continuing to report state and accept direct controls, continued group feedback,
+single-frame group commands, overlap precedence independent of group order, and
+manual enable/disable/show/hide choices surviving reloads. An area command with
+hidden members sends only the native group mask. Changing either default does
+not override an existing registry choice. Published libraries without the new
+fields skip these cases.
+
+The development preview on 2026-11-27 loaded all nine local YAML groups with
+`members_enabled: true` and `members_visible: false`. It restored the 59 members
+disabled by the earlier preview and hid them instead. Registry snapshots retained
+all 527 Ampio identities and existing preferences outside those preview flags.
+The recorder contained fresh states for all 486 enabled entities, including the
+59 hidden members, with none unavailable. Backups and the verified local wheel
+are under `.dev-config/backups/member-visibility-dev-20261127-091429/`.
+
 The standalone library additionally validates masks and membership, catches
 duplicate physical outputs and resource IDs, and tests dependency cleanup.
 Run both repositories' suites with the matching local library before its release.

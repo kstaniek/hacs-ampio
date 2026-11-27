@@ -12,6 +12,16 @@
 
 ### Features
 
+- Add `light_groups.members_enabled`, defaulting to true. Setting it to false
+  creates individual member entities disabled by default while retaining group
+  control and feedback. Preserve existing registry choices and manual overrides;
+  overlapping groups use the disabled default if any containing group requests it.
+  Requires an updated aioampio build with the new configuration field.
+- Add independent `light_groups.members_visible`, defaulting to true. Set it
+  to false to register members hidden while retaining their state, history and
+  direct controls. Preserve manual visibility choices; area actions skip hidden
+  members and target the native group without extra individual writes.
+
 - Add M-RT temperature control and modes 0-3 when a climate-capable aioampio
   build is installed. Expose Auto/Heat and Schedule/Manual/Temporary/Holiday
   presets, with feedback-driven state and validated temperature limits.

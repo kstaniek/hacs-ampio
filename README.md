@@ -71,11 +71,32 @@ light_groups:
     name: MLED Sofa
     area: Salon
     members: [light11, light12, light13, light14, light15, light16]
+    members_enabled: true   # Optional; defaults to true
+    members_visible: false  # Keep members active but hide them from automatic dashboards
 ```
 
 Member IDs refer to existing lights on that device. The library derives mask
 `0xFC00` and sends exactly one frame for group on, off, or brightness. There is
 no batching delay. Group brightness commands apply a common level to all members.
+
+`members_enabled` controls the initial Home Assistant enabled state of individual
+members. It defaults to `true`. With `false`, their entities are still created in
+the entity registry but disabled by the integration; the group stays enabled and
+continues to receive member feedback. Members can be enabled manually in HA.
+For overlapping groups, a member defaults to disabled if any containing group
+sets `members_enabled: false`. Existing registry choices are preserved; changing
+the YAML does not disable members that were already registered as enabled.
+`members_visible` independently controls initial visibility and also defaults to
+`true`. Use `members_enabled: true` and `members_visible: false` to show the group
+on automatic dashboards while keeping individual member state, history, direct
+controls and automations available. Hidden members are skipped by area, device
+and label targets, preventing duplicate group/member commands. Explicit dashboard
+cards can still show hidden entities. An overlapping group's `false` visibility
+default takes precedence. Existing visibility choices and manual overrides are
+preserved across reloads and YAML edits.
+
+Both options require an updated aioampio build containing the new configuration
+fields; the published 2.3.0 build does not accept them yet.
 
 For the three Garage relays on module `can_id: 6686`:
 

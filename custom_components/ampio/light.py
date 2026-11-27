@@ -78,6 +78,17 @@ class AmpioLight(AmpioBaseEntity, LightEntity):
         super().__init__(bridge, controller, resource)
         self.resource = resource
         self.controller = controller
+        member_groups = [
+            group
+            for group in controller
+            if resource.id in getattr(group, "members", ())
+        ]
+        self._attr_entity_registry_enabled_default = all(
+            getattr(group, "members_enabled", True) for group in member_groups
+        )
+        self._attr_entity_registry_visible_default = all(
+            getattr(group, "members_visible", True) for group in member_groups
+        )
         supported_color_modes = {ColorMode.ONOFF}
         if resource.supports_color:
             supported_color_modes.add(ColorMode.RGBW)
